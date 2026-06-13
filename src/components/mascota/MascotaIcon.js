@@ -1,46 +1,98 @@
-import React, { useState } from 'react';
-import { TouchableOpacity, Text, View, Modal, Animated, StyleSheet } from 'react-native';
+// MascotaIcon.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { TouchableOpacity, Text, View, Animated, StyleSheet } from 'react-native';
 import { useMascota } from './MascotaProvider';
 import MascotaModal from './MascotaModal';
 
 export default function MascotaIcon() {
-  const { points, streak, currentLevel, progressToNext } = useMascota();
+  const { 
+    hasSelectedMascota, 
+    selectedMascota, 
+    currentEmoji, 
+    currentEtapa,
+    streak, 
+    progressToNext,
+    currentMessage,
+    generarFrase,
+    points,
+  } = useMascota();
+  
   const [showModal, setShowModal] = useState(false);
-  const [bounceAnim] = useState(new Animated.Value(1));
+  const [showBubble, setShowBubble] = useState(false);
+  const [bubbleMessage, setBubbleMessage] = useState('');
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // Animación flotante continua
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: -5, duration: 1000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  // Mostrar mensaje aleatorio cada 30 segundos
+  useEffect(() => {
+    if (!hasSelectedMascota) return;
+    
+    const interval = setInterval(() => {
+      const frase = generarFrase();
+      setBubbleMessage(frase);
+      setShowBubble(true);
+      setTimeout(() => setShowBubble(false), 4000);
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [hasSelectedMascota, points]);
+
+  // Mostrar mensaje externo (desde provider)
+  useEffect(() => {
+    if (currentMessage) {
+      setBubbleMessage(currentMessage.text);
+      setShowBubble(true);
+    }
+  }, [currentMessage]);
 
   const handlePress = () => {
-    // Animación de rebote al tocar
     Animated.sequence([
       Animated.spring(bounceAnim, { toValue: 1.2, useNativeDriver: true, friction: 3 }),
       Animated.spring(bounceAnim, { toValue: 1, useNativeDriver: true, friction: 3 }),
     ]).start();
-    
     setShowModal(true);
   };
 
+  if (!hasSelectedMascota) return null;
+
   return (
     <>
-      <TouchableOpacity 
-        style={styles.container} 
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
-        <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
-          <View style={[styles.mascotaCircle, { backgroundColor: currentLevel.color + '20' }]}>
-            <Text style={styles.mascotaEmoji}>{currentLevel.emoji}</Text>
+      <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.8}>
+        {/* Burbuja de diálogo */}
+        {showBubble && (
+          <Animated.View style={[styles.bubble, { transform: [{ scale: bounceAnim }] }]}>
+            <Text style={styles.bubbleText}>{bubbleMessage}</Text>
+            <View style={styles.bubbleArrow} />
+          </Animated.View>
+        )}
+
+        {/* Mascota animada */}
+        <Animated.View style={{ transform: [{ translateY: floatAnim }, { scale: bounceAnim }] }}>
+          <View style={[styles.circle, { backgroundColor: selectedMascota?.color + '20' }]}>
+            <Text style={styles.emoji}>{currentEmoji}</Text>
           </View>
         </Animated.View>
-        
-        {/* Indicador de nivel */}
+
+        {/* Badge de nivel */}
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>{currentLevel.id}</Text>
+          <Text style={styles.levelText}>{currentEtapa.id}</Text>
         </View>
-        
-        {/* Barra de progreso pequeña */}
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${progressToNext}%`, backgroundColor: currentLevel.color }]} />
+
+        {/* Barra de progreso */}
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${progressToNext}%`, backgroundColor: selectedMascota?.color }]} />
         </View>
-        
+
         {/* Racha */}
         {streak > 0 && (
           <View style={styles.streakBadge}>
@@ -49,7 +101,7 @@ export default function MascotaIcon() {
           </View>
         )}
       </TouchableOpacity>
-      
+
       <MascotaModal visible={showModal} onClose={() => setShowModal(false)} />
     </>
   );
@@ -58,25 +110,25 @@ export default function MascotaIcon() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
-    right: 16,
+    top: 45,
+    right: 12,
     zIndex: 1000,
     alignItems: 'center',
   },
-  mascotaCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  circle: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 5,
+    elevation: 6,
   },
-  mascotaEmoji: {
-    fontSize: 28,
+  emoji: {
+    fontSize: 32,
   },
   levelBadge: {
     position: 'absolute',
@@ -92,15 +144,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  progressBarContainer: {
-    width: 40,
+  progressBar: {
+    width: 50,
     height: 3,
     backgroundColor: '#DCE5EC',
     borderRadius: 2,
     marginTop: 4,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  progressFill: {
     height: '100%',
     borderRadius: 2,
   },
@@ -123,5 +175,39 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  bubble: {
+    position: 'absolute',
+    bottom: 60,
+    right: 0,
+    backgroundColor: '#1C1C1C',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  bubbleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
+  bubbleArrow: {
+    position: 'absolute',
+    bottom: -6,
+    right: 20,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#1C1C1C',
   },
 });

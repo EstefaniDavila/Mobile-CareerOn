@@ -1,18 +1,13 @@
+// MascotaProvider.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MASCOTAS, ETAPAS, getMascotaEmoji, getRandomFrase } from './mascotaData';
 
 const MascotaContext = createContext();
 
-// Niveles de evolución
-const LEVELS = [
-  { id: 1, name: 'HuevOn', minPoints: 0, image: '🥚', color: '#FFD700', emoji: '🥚', evolutionMessage: '¡Tu huevo necesita calor! Sigue participando.' },
-  { id: 2, name: 'Learning', minPoints: 100, image: '🐣', color: '#FFA500', emoji: '🐣', evolutionMessage: '¡Ha nacido Learning! Tu dedicación está dando frutos.' },
-  { id: 3, name: 'SkillBird', minPoints: 300, image: '🐦', color: '#5B34F2', emoji: '🐦', evolutionMessage: '¡SkillBird ha crecido! Sigue así, vas por buen camino.' },
-  { id: 4, name: 'CareerOn', minPoints: 600, image: '🦉', color: '#0F6C7A', emoji: '🦉', evolutionMessage: '¡CareerOn es un sabio! Tu esfuerzo te está llevando lejos.' },
-  { id: 5, name: 'MasterFénix', minPoints: 1000, image: '🔥', color: '#F25F63', emoji: '🔥', evolutionMessage: '¡LEYENDA! MasterFénix ha renacido. Eres un ejemplo.' },
-];
-
 export function MascotaProvider({ children }) {
+  // Estado de la mascota
+  const [selectedMascota, setSelectedMascota] = useState(null);
   const [points, setPoints] = useState(0);
   const [streak, setStreak] = useState(0);
   const [lastActionDate, setLastActionDate] = useState(null);
@@ -20,9 +15,12 @@ export function MascotaProvider({ children }) {
     post: false,
     apply: 0,
     interview: 0,
+    course: 0,
+    skill: 0,
   });
   const [showEvolution, setShowEvolution] = useState(false);
-  const [evolutionMessage, setEvolutionMessage] = useState('');
+  const [currentMessage, setCurrentMessage] = useState(null);
+  const [hasSelectedMascota, setHasSelectedMascota] = useState(false);
 
   // Cargar datos guardados
   useEffect(() => {
@@ -31,17 +29,20 @@ export function MascotaProvider({ children }) {
 
   const loadData = async () => {
     try {
+      const savedMascota = await AsyncStorage.getItem('@mascota_selected');
       const savedPoints = await AsyncStorage.getItem('@mascota_points');
       const savedStreak = await AsyncStorage.getItem('@mascota_streak');
       const savedDate = await AsyncStorage.getItem('@mascota_lastDate');
       const savedDaily = await AsyncStorage.getItem('@mascota_daily');
+      const savedSelected = await AsyncStorage.getItem('@mascota_hasSelected');
 
+      if (savedMascota) setSelectedMascota(JSON.parse(savedMascota));
       if (savedPoints) setPoints(parseInt(savedPoints));
       if (savedStreak) setStreak(parseInt(savedStreak));
       if (savedDate) setLastActionDate(savedDate);
       if (savedDaily) setDailyActions(JSON.parse(savedDaily));
+      if (savedSelected) setHasSelectedMascota(JSON.parse(savedSelected));
 
-      // Verificar racha diaria
       checkStreak();
     } catch (error) {
       console.log('Error loading mascota data:', error);
@@ -51,34 +52,71 @@ export function MascotaProvider({ children }) {
   const checkStreak = () => {
     const today = new Date().toDateString();
     if (lastActionDate !== today) {
-      // Resetear acciones diarias
-      setDailyActions({ post: false, apply: 0, interview: 0 });
+      setDailyActions({ post: false, apply: 0, interview: 0, course: 0, skill: 0 });
     }
   };
 
-  const saveData = async (newPoints, newStreak, newDaily) => {
+  const saveData = async () => {
     try {
-      await AsyncStorage.setItem('@mascota_points', newPoints.toString());
-      await AsyncStorage.setItem('@mascota_streak', newStreak.toString());
+      await AsyncStorage.setItem('@mascota_points', points.toString());
+      await AsyncStorage.setItem('@mascota_streak', streak.toString());
       await AsyncStorage.setItem('@mascota_lastDate', new Date().toDateString());
-      await AsyncStorage.setItem('@mascota_daily', JSON.stringify(newDaily));
+      await AsyncStorage.setItem('@mascota_daily', JSON.stringify(dailyActions));
+      if (selectedMascota) {
+        await AsyncStorage.setItem('@mascota_selected', JSON.stringify(selectedMascota));
+      }
+      await AsyncStorage.setItem('@mascota_hasSelected', JSON.stringify(hasSelectedMascota));
     } catch (error) {
       console.log('Error saving mascota data:', error);
     }
   };
 
-  const checkEvolution = (oldPoints, newPoints) => {
-    const oldLevel = LEVELS.filter(l => oldPoints >= l.minPoints).pop() || LEVELS[0];
-    const newLevel = LEVELS.filter(l => newPoints >= l.minPoints).pop() || LEVELS[0];
+  const seleccionarMascota = async (tipo) => {
+    const nuevaMascota = {
+      tipo: tipo.id,
+      nombre: tipo.name,
+      emoji: tipo.emoji,
+      color: tipo.color,
+    };
+    setSelectedMascota(nuevaMascota);
+    setHasSelectedMascota(true);
+    await saveData();
     
-    if (newLevel.id > oldLevel.id) {
-      setEvolutionMessage(newLevel.evolutionMessage);
+    // Mostrar mensaje de bienvenida
+    setCurrentMessage({
+      text: `¡Soy ${tipo.name}! Cuidaré de ti en tu camino laboral 🎉`,
+      type: 'welcome',
+    });
+    setTimeout(() => setCurrentMessage(null), 5000);
+  };
+
+  const getCurrentEtapa = () => {
+    const etapasList = Object.values(ETAPAS);
+    return etapasList.filter(e => points >= e.minPoints).pop() || ETAPAS.HUEVO;
+  };
+
+  const getCurrentEmoji = () => {
+    if (!selectedMascota) return '🥚';
+    const etapa = getCurrentEtapa();
+    return getMascotaEmoji(selectedMascota.tipo, etapa.id);
+  };
+
+  const checkEvolution = (oldPoints) => {
+    const oldEtapa = Object.values(ETAPAS).filter(e => oldPoints >= e.minPoints).pop() || ETAPAS.HUEVO;
+    const newEtapa = getCurrentEtapa();
+    
+    if (newEtapa.id > oldEtapa.id) {
       setShowEvolution(true);
+      setCurrentMessage({
+        text: getRandomFrase('nivel', { level: newEtapa.name }),
+        type: 'evolution',
+      });
       setTimeout(() => setShowEvolution(false), 5000);
+      setTimeout(() => setCurrentMessage(null), 6000);
     }
   };
 
-  const addPoints = async (action, amount) => {
+  const addPoints = async (action, amount, metadata = {}) => {
     const today = new Date().toDateString();
     let canAdd = true;
     let newDaily = { ...dailyActions };
@@ -99,31 +137,46 @@ export function MascotaProvider({ children }) {
         if (dailyActions.interview >= 2) canAdd = false;
         else newDaily.interview += 1;
         break;
+      case 'course':
+        if (dailyActions.course >= 2) canAdd = false;
+        else newDaily.course += 1;
+        break;
+      case 'skill':
+        if (dailyActions.skill >= 2) canAdd = false;
+        else newDaily.skill += 1;
+        break;
     }
 
     if (canAdd) {
       newPoints += amount;
       
-      // Actualizar racha si es primera acción del día
+      // Actualizar racha
       if (lastActionDate !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         
         if (lastActionDate === yesterday.toDateString()) {
           newStreak += 1;
-          // Bonus por racha
-          newPoints += 10;
+          newPoints += 10; // Bonus por racha
+          
+          // Mostrar mensaje de racha
+          setCurrentMessage({
+            text: getRandomFrase('racha', { streak: newStreak }),
+            type: 'streak',
+          });
+          setTimeout(() => setCurrentMessage(null), 4000);
         } else {
           newStreak = 1;
         }
         setLastActionDate(today);
       }
       
+      const oldPoints = points;
       setPoints(newPoints);
       setStreak(newStreak);
       setDailyActions(newDaily);
-      saveData(newPoints, newStreak, newDaily);
-      checkEvolution(points, newPoints);
+      saveData();
+      checkEvolution(oldPoints);
       
       return { success: true, newPoints, newStreak };
     }
@@ -131,38 +184,50 @@ export function MascotaProvider({ children }) {
     return { success: false, message: 'Límite diario alcanzado' };
   };
 
-  const getCurrentLevel = () => {
-    return LEVELS.filter(l => points >= l.minPoints).pop() || LEVELS[0];
+  // Generar frase contextual
+  const generarFrase = () => {
+    const random = Math.random();
+    const etapa = getCurrentEtapa();
+    
+    if (random < 0.3 && streak > 0) {
+      return getRandomFrase('racha', { streak });
+    } else if (random < 0.5) {
+      return getRandomFrase('animo');
+    } else if (random < 0.7) {
+      return getRandomFrase('postular');
+    } else if (random < 0.85) {
+      return getRandomFrase('publicar');
+    } else {
+      return getRandomFrase('animo');
+    }
   };
 
-  const getNextLevel = () => {
-    const current = getCurrentLevel();
-    return LEVELS.find(l => l.id === current.id + 1);
-  };
-
-  const pointsToNextLevel = () => {
-    const next = getNextLevel();
-    if (!next) return 0;
-    return next.minPoints - points;
-  };
-
-  const currentLevel = getCurrentLevel();
-  const nextLevel = getNextLevel();
-  const progressToNext = nextLevel ? (points - currentLevel.minPoints) / (nextLevel.minPoints - currentLevel.minPoints) * 100 : 100;
+  const currentEtapa = getCurrentEtapa();
+  const currentEmoji = getCurrentEmoji();
+  const nextEtapa = Object.values(ETAPAS).find(e => e.id === currentEtapa.id + 1);
+  const pointsToNext = nextEtapa ? nextEtapa.minPoints - points : 0;
+  const progressToNext = nextEtapa ? (points - currentEtapa.minPoints) / (nextEtapa.minPoints - currentEtapa.minPoints) * 100 : 100;
 
   return (
     <MascotaContext.Provider value={{
+      hasSelectedMascota,
+      selectedMascota,
       points,
       streak,
-      currentLevel,
-      nextLevel,
+      currentEtapa,
+      nextEtapa,
+      currentEmoji,
+      pointsToNext,
       progressToNext,
-      pointsToNextLevel: pointsToNextLevel(),
-      addPoints,
-      showEvolution,
-      evolutionMessage,
-      setShowEvolution,
       dailyActions,
+      showEvolution,
+      currentMessage,
+      seleccionarMascota,
+      addPoints,
+      generarFrase,
+      setCurrentMessage,
+      MASCOTAS,
+      ETAPAS,
     }}>
       {children}
     </MascotaContext.Provider>
