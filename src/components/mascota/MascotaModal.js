@@ -1,30 +1,43 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useMascota } from './MascotaProvider';
+import { ETAPAS } from './mascotaData';
 
 export default function MascotaModal({ visible, onClose }) {
-  const { points, streak, currentLevel, nextLevel, pointsToNextLevel, progressToNext, dailyActions } = useMascota();
+  const { 
+    points, 
+    streak, 
+    currentEtapa, 
+    nextEtapa, 
+    pointsToNext, 
+    progressToNext,
+    dailyActions,
+    selectedMascota,
+    currentEmoji
+  } = useMascota();
 
-  // Frases según el nivel
+  const etapasList = Object.values(ETAPAS);
+  const currentLevelId = currentEtapa?.id || 1;
+
   const getMessage = () => {
     const messages = {
-      1: ['¡Toc toc! ¿Hay alguien ahí?', 'Publica algo para que pueda nacer 🥚', '¡Necesito calor! Participa cada día'],
-      2: ['¡Pío pío! Sigue así', 'Completa cursos para crecer 🐣', '¡Me encanta verte aprender!'],
-      3: ['¡Ya sé volar!', 'Completa tu roadmap 📈', 'Cada logro me hace más fuerte'],
-      4: ['¡Soy un sabio! 🦉', 'Tu carrera está despegando', '¡Vamos por más!'],
-      5: ['🔥 ¡RENAZCO DE MIS CENIZAS!', 'Eres una leyenda', '¡Nadie te detiene!'],
+      1: '¡Publica algo para que pueda nacer! 🥚',
+      2: '¡Pío pío! Sigue así 🐣',
+      3: '¡Ya sé volar! Completa tu roadmap 📈',
+      4: '¡Soy un sabio! Tu carrera despega 🦉',
+      5: '¡ERES UNA LEYENDA! 🔥',
     };
-    const levelMessages = messages[currentLevel.id] || messages[1];
-    return levelMessages[Math.floor(Math.random() * levelMessages.length)];
+    return messages[currentLevelId] || messages[1];
   };
+
+  if (!selectedMascota) return null;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          {/* Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>✨ Tu Compañero de Carrera ✨</Text>
+            <Text style={styles.modalTitle}>✨ {selectedMascota.nombre} ✨</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -32,37 +45,39 @@ export default function MascotaModal({ visible, onClose }) {
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Mascota grande */}
-            <View style={[styles.mascotaLarge, { backgroundColor: currentLevel.color + '15' }]}>
-              <Text style={styles.mascotaLargeEmoji}>{currentLevel.emoji}</Text>
-              <Text style={[styles.mascotaName, { color: currentLevel.color }]}>{currentLevel.name}</Text>
+            <View style={[styles.mascotaLarge, { backgroundColor: selectedMascota.color + '20' }]}>
+              <Text style={styles.mascotaLargeEmoji}>{currentEmoji}</Text>
+              <Text style={[styles.mascotaName, { color: selectedMascota.color }]}>
+                {currentEtapa?.name} {selectedMascota.nombre}
+              </Text>
               <Text style={styles.mascotaMessage}>“{getMessage()}”</Text>
             </View>
 
-            {/* Estadísticas principales */}
+            {/* Estadísticas */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>{points}</Text>
-                <Text style={styles.statLabel}>Puntos totales</Text>
+                <Text style={styles.statLabel}>Puntos</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>🔥 {streak}</Text>
-                <Text style={styles.statLabel}>Racha de días</Text>
+                <Text style={styles.statLabel}>Racha</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>🏆 {currentLevel.id}</Text>
-                <Text style={styles.statLabel}>Nivel alcanzado</Text>
+                <Text style={styles.statValue}>🏆 {currentLevelId}</Text>
+                <Text style={styles.statLabel}>Nivel</Text>
               </View>
             </View>
 
-            {/* Barra de progreso al siguiente nivel */}
-            {nextLevel && (
+            {/* Barra de progreso */}
+            {nextEtapa && (
               <View style={styles.progressSection}>
-                <Text style={styles.progressTitle}>Para llegar a {nextLevel.name}</Text>
+                <Text style={styles.progressTitle}>Para llegar a {nextEtapa.name}</Text>
                 <View style={styles.progressBarLarge}>
-                  <View style={[styles.progressFillLarge, { width: `${progressToNext}%`, backgroundColor: currentLevel.color }]} />
+                  <View style={[styles.progressFillLarge, { width: `${progressToNext}%`, backgroundColor: selectedMascota.color }]} />
                 </View>
                 <Text style={styles.progressText}>
-                  {pointsToNextLevel} puntos para el siguiente nivel
+                  {pointsToNext} puntos para el siguiente nivel
                 </Text>
               </View>
             )}
@@ -81,7 +96,7 @@ export default function MascotaModal({ visible, onClose }) {
 
               <View style={styles.dailyItem}>
                 <Text style={styles.dailyIcon}>💼</Text>
-                <Text style={styles.dailyText}>Postularse a empleos</Text>
+                <Text style={styles.dailyText}>Postularse</Text>
                 <View style={[styles.dailyBadge, dailyActions.apply >= 3 ? styles.completed : styles.pending]}>
                   <Text style={styles.dailyBadgeText}>{dailyActions.apply}/3 • +5 c/u</Text>
                 </View>
@@ -100,21 +115,15 @@ export default function MascotaModal({ visible, onClose }) {
             <View style={styles.evolutionSection}>
               <Text style={styles.sectionTitle}>📈 Evoluciones</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {[
-                  { level: 1, name: 'HuevOn', emoji: '🥚', points: 0 },
-                  { level: 2, name: 'Learning', emoji: '🐣', points: 100 },
-                  { level: 3, name: 'SkillBird', emoji: '🐦', points: 300 },
-                  { level: 4, name: 'CareerOn', emoji: '🦉', points: 600 },
-                  { level: 5, name: 'MasterFénix', emoji: '🔥', points: 1000 },
-                ].map(level => (
-                  <View key={level.level} style={[
+                {etapasList.map(etapa => (
+                  <View key={etapa.id} style={[
                     styles.evolutionCard,
-                    currentLevel.id >= level.level && styles.evolutionCardUnlocked
+                    currentLevelId >= etapa.id && styles.evolutionCardUnlocked
                   ]}>
-                    <Text style={styles.evolutionEmoji}>{level.emoji}</Text>
-                    <Text style={styles.evolutionName}>{level.name}</Text>
-                    <Text style={styles.evolutionPoints}>{level.points} pts</Text>
-                    {currentLevel.id >= level.level && (
+                    <Text style={styles.evolutionEmoji}>{etapa.emoji}</Text>
+                    <Text style={styles.evolutionName}>{etapa.name}</Text>
+                    <Text style={styles.evolutionPoints}>{etapa.minPoints} pts</Text>
+                    {currentLevelId >= etapa.id && (
                       <View style={styles.unlockBadge}>
                         <Text style={styles.unlockText}>✓</Text>
                       </View>
@@ -124,13 +133,13 @@ export default function MascotaModal({ visible, onClose }) {
               </ScrollView>
             </View>
 
-            {/* Tips para ganar puntos */}
+            {/* Tips */}
             <View style={styles.tipsSection}>
-              <Text style={styles.sectionTitle}>💡 Tips para ganar puntos</Text>
-              <Text style={styles.tipText}>• 📝 Publica 1 logro por día → +20 pts y mantiene tu racha</Text>
-              <Text style={styles.tipText}>• 🎓 Completa cursos → +50 pts cada uno</Text>
+              <Text style={styles.sectionTitle}>💡 Tips</Text>
+              <Text style={styles.tipText}>• 📝 Publica 1 logro por día → +20 pts</Text>
+              <Text style={styles.tipText}>• 🎓 Completa cursos → +50 pts</Text>
               <Text style={styles.tipText}>• 🗺️ Termina nodos del roadmap → +30 pts</Text>
-              <Text style={styles.tipText}>• 🔥 Mantén racha diaria → +10 pts extra por día</Text>
+              <Text style={styles.tipText}>• 🔥 Mantén racha diaria → +10 pts extra</Text>
             </View>
           </ScrollView>
         </View>
@@ -149,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: '85%',
     paddingBottom: 20,
   },
   modalHeader: {
@@ -158,19 +167,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#DCE5EC',
+    borderBottomColor: '#F3F4F6',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   closeButton: {
     padding: 8,
   },
   closeText: {
     fontSize: 20,
-    color: '#5F6368',
+    color: '#6B7280',
   },
   mascotaLarge: {
     alignItems: 'center',
@@ -183,14 +192,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   mascotaName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   mascotaMessage: {
-    fontSize: 14,
-    color: '#5F6368',
+    fontSize: 13,
+    color: '#6B7280',
     marginTop: 12,
-    textAlign: 'center',
     fontStyle: 'italic',
   },
   statsGrid: {
@@ -201,19 +209,19 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#F3F3F3',
-    padding: 16,
+    backgroundColor: '#F9FAFB',
+    padding: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   statLabel: {
     fontSize: 11,
-    color: '#5F6368',
+    color: '#6B7280',
     marginTop: 4,
   },
   progressSection: {
@@ -221,25 +229,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#1C1C1C',
+    color: '#1F2937',
     marginBottom: 8,
   },
   progressBarLarge: {
-    height: 10,
-    backgroundColor: '#DCE5EC',
-    borderRadius: 5,
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFillLarge: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 4,
   },
   progressText: {
     fontSize: 12,
-    color: '#5F6368',
+    color: '#6B7280',
   },
   dailySection: {
     paddingHorizontal: 20,
@@ -247,41 +255,41 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 12,
   },
   dailyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F9FAFB',
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
   },
   dailyIcon: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 12,
   },
   dailyText: {
     flex: 1,
-    fontSize: 14,
-    color: '#1C1C1C',
+    fontSize: 13,
+    color: '#1F2937',
   },
   dailyBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 16,
   },
   pending: {
     backgroundColor: '#5B34F2',
   },
   completed: {
-    backgroundColor: '#0F6C7A',
+    backgroundColor: '#10B981',
   },
   dailyBadgeText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   evolutionSection: {
@@ -289,44 +297,44 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   evolutionCard: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: '#F9FAFB',
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
-    marginRight: 12,
-    minWidth: 80,
+    marginRight: 10,
+    minWidth: 70,
     opacity: 0.5,
   },
   evolutionCardUnlocked: {
     opacity: 1,
-    backgroundColor: currentLevel?.color + '20',
+    backgroundColor: '#F3F4F6',
   },
   evolutionEmoji: {
-    fontSize: 32,
+    fontSize: 28,
   },
   evolutionName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     marginTop: 6,
   },
   evolutionPoints: {
-    fontSize: 10,
-    color: '#5F6368',
+    fontSize: 9,
+    color: '#6B7280',
   },
   unlockBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#0F6C7A',
-    borderRadius: 12,
-    width: 20,
-    height: 20,
+    top: -4,
+    right: -4,
+    backgroundColor: '#10B981',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   unlockText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   tipsSection: {
@@ -335,7 +343,7 @@ const styles = StyleSheet.create({
   },
   tipText: {
     fontSize: 12,
-    color: '#5F6368',
+    color: '#6B7280',
     marginBottom: 6,
     lineHeight: 18,
   },

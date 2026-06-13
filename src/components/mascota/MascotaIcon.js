@@ -1,4 +1,3 @@
-// MascotaIcon.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { TouchableOpacity, Text, View, Animated, StyleSheet } from 'react-native';
 import { useMascota } from './MascotaProvider';
@@ -12,9 +11,7 @@ export default function MascotaIcon() {
     currentEtapa,
     streak, 
     progressToNext,
-    currentMessage,
     generarFrase,
-    points,
   } = useMascota();
   
   const [showModal, setShowModal] = useState(false);
@@ -23,7 +20,6 @@ export default function MascotaIcon() {
   const bounceAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
-  // Animación flotante continua
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -33,7 +29,6 @@ export default function MascotaIcon() {
     ).start();
   }, []);
 
-  // Mostrar mensaje aleatorio cada 30 segundos
   useEffect(() => {
     if (!hasSelectedMascota) return;
     
@@ -45,15 +40,7 @@ export default function MascotaIcon() {
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [hasSelectedMascota, points]);
-
-  // Mostrar mensaje externo (desde provider)
-  useEffect(() => {
-    if (currentMessage) {
-      setBubbleMessage(currentMessage.text);
-      setShowBubble(true);
-    }
-  }, [currentMessage]);
+  }, [hasSelectedMascota]);
 
   const handlePress = () => {
     Animated.sequence([
@@ -63,12 +50,11 @@ export default function MascotaIcon() {
     setShowModal(true);
   };
 
-  if (!hasSelectedMascota) return null;
+  if (!hasSelectedMascota || !selectedMascota) return null;
 
   return (
     <>
       <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.8}>
-        {/* Burbuja de diálogo */}
         {showBubble && (
           <Animated.View style={[styles.bubble, { transform: [{ scale: bounceAnim }] }]}>
             <Text style={styles.bubbleText}>{bubbleMessage}</Text>
@@ -76,24 +62,20 @@ export default function MascotaIcon() {
           </Animated.View>
         )}
 
-        {/* Mascota animada */}
         <Animated.View style={{ transform: [{ translateY: floatAnim }, { scale: bounceAnim }] }}>
-          <View style={[styles.circle, { backgroundColor: selectedMascota?.color + '20' }]}>
+          <View style={[styles.circle, { backgroundColor: selectedMascota.color + '20' }]}>
             <Text style={styles.emoji}>{currentEmoji}</Text>
           </View>
         </Animated.View>
 
-        {/* Badge de nivel */}
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>{currentEtapa.id}</Text>
+          <Text style={styles.levelText}>{currentEtapa?.id || 1}</Text>
         </View>
 
-        {/* Barra de progreso */}
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progressToNext}%`, backgroundColor: selectedMascota?.color }]} />
+          <View style={[styles.progressFill, { width: `${progressToNext}%`, backgroundColor: selectedMascota.color }]} />
         </View>
 
-        {/* Racha */}
         {streak > 0 && (
           <View style={styles.streakBadge}>
             <Text style={styles.streakEmoji}>🔥</Text>
@@ -134,7 +116,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -5,
     right: -5,
-    backgroundColor: '#1C1C1C',
+    backgroundColor: '#1F2937',
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -147,7 +129,7 @@ const styles = StyleSheet.create({
   progressBar: {
     width: 50,
     height: 3,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#F3F4F6',
     borderRadius: 2,
     marginTop: 4,
     overflow: 'hidden',
@@ -161,7 +143,7 @@ const styles = StyleSheet.create({
     top: -8,
     left: -8,
     flexDirection: 'row',
-    backgroundColor: '#F25F63',
+    backgroundColor: '#EF4444',
     borderRadius: 20,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -180,16 +162,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 60,
     right: 0,
-    backgroundColor: '#1C1C1C',
+    backgroundColor: '#1F2937',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
     maxWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
   },
   bubbleText: {
     color: '#FFFFFF',
@@ -201,13 +178,11 @@ const styles = StyleSheet.create({
     right: 20,
     width: 0,
     height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
     borderLeftWidth: 6,
     borderRightWidth: 6,
     borderTopWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#1C1C1C',
+    borderTopColor: '#1F2937',
   },
 });
