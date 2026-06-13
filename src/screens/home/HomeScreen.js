@@ -3,9 +3,14 @@ import { useState } from 'react';
 
 export default function HomeScreen() {
   const [likedPosts, setLikedPosts] = useState({});
+  const [savedJobs, setSavedJobs] = useState({});
 
   const handleLike = (postId) => {
     setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const handleSaveJob = (jobId) => {
+    setSavedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
   };
 
   const feedPosts = [
@@ -54,21 +59,19 @@ export default function HomeScreen() {
   ];
 
   const trendingSkills = [
-    { name: "React", demand: "+45%" },
-    { name: "Python", demand: "+38%" },
-    { name: "SQL", demand: "+32%" },
-    { name: "Cloud AWS", demand: "+28%" },
+    { name: "React", demand: "+45%", level: 85 },
+    { name: "Python", demand: "+38%", level: 78 },
+    { name: "SQL", demand: "+32%", level: 72 },
+    { name: "Cloud AWS", demand: "+28%", level: 68 },
   ];
 
   return (
     <View style={styles.container}>
-      {/* Header con logo - TAMAÑO REDUCIDO */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Image 
-            source={{ uri: "https://res.cloudinary.com/dpuu7ddmk/image/upload/f_auto,q_auto/v1/WhatsApp_Image_2026-05-15_at_07.33.47_f5iq9x" }} 
-            style={styles.logo} 
-          />
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoInitial}>C</Text>
+          </View>
           <View>
             <Text style={styles.logoText}>CarrerOn</Text>
             <Text style={styles.logoSubtext}>Tu Copiloto de Empleabilidad</Text>
@@ -76,39 +79,61 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity style={styles.profileButton}>
           <Image source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }} style={styles.profileAvatar} />
+          <View style={styles.onlineDot} />
         </TouchableOpacity>
       </View>
 
-      {/* Contenido principal - 3 columnas en web (simulado con flex wrap para mobile) */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.gridContainer}>
           
-          {/* COLUMNA IZQUIERDA - Perfil del usuario */}
+          {/* COLUMNA IZQUIERDA */}
           <View style={styles.leftColumn}>
             <View style={styles.profileCard}>
+              <View style={styles.profileCover} />
               <Image source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }} style={styles.userAvatarLarge} />
               <Text style={styles.userName}>Ana Martínez</Text>
               <Text style={styles.userRole}>Desarrolladora Full Stack</Text>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>12</Text>
+                  <Text style={styles.statLabel}>Cursos</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>8</Text>
+                  <Text style={styles.statLabel}>Logros</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>5</Text>
+                  <Text style={styles.statLabel}>Proyectos</Text>
+                </View>
+              </View>
+
               <View style={styles.progressContainer}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>Perfil completado</Text>
+                  <Text style={styles.progressPercent}>75%</Text>
+                </View>
                 <View style={styles.progressBar}>
                   <View style={[styles.progressFill, { width: "75%" }]} />
                 </View>
-                <Text style={styles.progressText}>75% de perfil completado</Text>
               </View>
+              
               <TouchableOpacity style={styles.completeButton}>
                 <Text style={styles.completeButtonText}>Completar perfil</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* COLUMNA CENTRAL - Feed principal */}
+          {/* COLUMNA CENTRAL */}
           <View style={styles.centerColumn}>
-            {/* Input para crear publicación rápida */}
             <View style={styles.createPostCard}>
               <Image source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }} style={styles.userAvatarSmall} />
               <TextInput 
-                placeholder="¿Qué quieres compartir hoy?" 
-                placeholderTextColor="#5F6368"
+                placeholder="¿Qué quieres compartir?" 
+                placeholderTextColor="#9CA3AF"
                 style={styles.postInput}
               />
               <TouchableOpacity style={styles.createPostButton}>
@@ -116,77 +141,125 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Tarjetas del feed */}
             {feedPosts.map(post => (
               <View key={post.id} style={styles.postCard}>
                 <View style={styles.postHeader}>
                   <Image source={{ uri: post.avatar }} style={styles.postAvatar} />
                   <View style={styles.postUserInfo}>
-                    <Text style={styles.postUserName}>{post.user}</Text>
+                    <View style={styles.postNameRow}>
+                      <Text style={styles.postUserName}>{post.user}</Text>
+                      <View style={styles.postBadge}>
+                        <Text style={styles.postBadgeText}>🏆</Text>
+                      </View>
+                    </View>
                     <Text style={styles.postUserRole}>{post.role}</Text>
                     <Text style={styles.postTime}>{post.time}</Text>
                   </View>
                 </View>
+                
                 <Text style={styles.postContent}>{post.content}</Text>
+                
                 {post.course && (
                   <View style={styles.courseBadge}>
-                    <Text style={styles.courseBadgeText}>🎓 {post.course}</Text>
+                    <Text style={styles.courseBadgeIcon}>🎓</Text>
+                    <Text style={styles.courseBadgeText}>{post.course}</Text>
                   </View>
                 )}
+                
                 <View style={styles.postActions}>
                   <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id)}>
-                    <Text style={[styles.actionIcon, likedPosts[post.id] && styles.actionIconActive]}>❤️</Text>
-                    <Text style={[styles.actionText, likedPosts[post.id] && styles.actionTextActive]}>{post.likes + (likedPosts[post.id] ? 1 : 0)}</Text>
+                    <View style={[styles.actionIconWrapper, likedPosts[post.id] && styles.actionIconActive]}>
+                      <Text style={styles.actionIcon}>❤️</Text>
+                    </View>
+                    <Text style={[styles.actionText, likedPosts[post.id] && styles.actionTextActive]}>
+                      {post.likes + (likedPosts[post.id] ? 1 : 0)}
+                    </Text>
                   </TouchableOpacity>
+                  
                   <TouchableOpacity style={styles.actionButton}>
-                    <Text style={styles.actionIcon}>💬</Text>
+                    <View style={styles.actionIconWrapper}>
+                      <Text style={styles.actionIcon}>💬</Text>
+                    </View>
                     <Text style={styles.actionText}>{post.comments}</Text>
                   </TouchableOpacity>
+                  
                   <TouchableOpacity style={styles.actionButton}>
-                    <Text style={styles.actionIcon}>🔄</Text>
+                    <View style={styles.actionIconWrapper}>
+                      <Text style={styles.actionIcon}>🔄</Text>
+                    </View>
                   </TouchableOpacity>
                 </View>
               </View>
             ))}
           </View>
 
-          {/* COLUMNA DERECHA - Sugerencias y tendencias */}
+          {/* COLUMNA DERECHA */}
           <View style={styles.rightColumn}>
-            {/* Sugerencias de empleo */}
             <View style={styles.suggestionsCard}>
-              <Text style={styles.suggestionsTitle}>💼 Empleos destacados</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Empleos destacados</Text>
+                <Text style={styles.cardSubtitle}>🔥 15 nuevas ofertas</Text>
+              </View>
+              
               {suggestedJobs.map(job => (
                 <TouchableOpacity key={job.id} style={styles.jobItem}>
-                  <View>
+                  <View style={styles.jobIcon}>
+                    <Text style={styles.jobIconText}>💼</Text>
+                  </View>
+                  <View style={styles.jobInfo}>
                     <Text style={styles.jobTitle}>{job.title}</Text>
                     <Text style={styles.jobCompany}>{job.company}</Text>
-                    <Text style={styles.jobMeta}>{job.location} • {job.salary}</Text>
+                    <View style={styles.jobMetaRow}>
+                      <Text style={styles.jobMeta}>📍 {job.location}</Text>
+                      <Text style={styles.jobMeta}>💰 {job.salary}</Text>
+                    </View>
                   </View>
-                  <TouchableOpacity style={styles.saveJobButton}>
-                    <Text style={styles.saveJobText}>Guardar</Text>
+                  <TouchableOpacity 
+                    style={[styles.saveJobButton, savedJobs[job.id] && styles.saveJobButtonActive]}
+                    onPress={() => handleSaveJob(job.id)}
+                  >
+                    <Text style={[styles.saveJobText, savedJobs[job.id] && styles.saveJobTextActive]}>
+                      {savedJobs[job.id] ? '✓' : '+'}
+                    </Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
+              
               <TouchableOpacity style={styles.viewMoreButton}>
                 <Text style={styles.viewMoreText}>Ver más empleos →</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Tendencias del mercado */}
             <View style={styles.trendsCard}>
-              <Text style={styles.trendsTitle}>📈 Habilidades más buscadas</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Habilidades trending</Text>
+                <Text style={styles.cardSubtitle}>Última semana</Text>
+              </View>
+              
               {trendingSkills.map(skill => (
                 <View key={skill.name} style={styles.skillItem}>
-                  <Text style={styles.skillName}>{skill.name}</Text>
+                  <View style={styles.skillInfo}>
+                    <Text style={styles.skillName}>{skill.name}</Text>
+                    <View style={styles.skillBarContainer}>
+                      <View style={[styles.skillBar, { width: `${skill.level}%` }]} />
+                    </View>
+                  </View>
                   <Text style={styles.skillDemand}>{skill.demand}</Text>
                 </View>
               ))}
+            </View>
+
+            <View style={styles.tipCard}>
+              <Text style={styles.tipIcon}>💡</Text>
+              <Text style={styles.tipTitle}>Tip del día</Text>
+              <Text style={styles.tipText}>
+                Personaliza tu perfil con palabras clave relevantes para aumentar un 40% tus oportunidades.
+              </Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Botón flotante para crear publicación (mobile) */}
       <TouchableOpacity style={styles.fab}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -197,7 +270,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -205,21 +278,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 15,
+    paddingBottom: 16,
     backgroundColor: '#4320C9',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  logo: {
-    width: 45,
-    height: 45,
-    resizeMode: 'contain',
-    borderRadius: 10,
+  logoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoInitial: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   logoText: {
     fontSize: 20,
@@ -231,17 +311,25 @@ const styles = StyleSheet.create({
     color: '#DCE5EC',
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F3F3',
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
   },
   profileAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   gridContainer: {
     flexDirection: 'row',
@@ -251,51 +339,100 @@ const styles = StyleSheet.create({
   },
   leftColumn: {
     flex: 1,
-    minWidth: 250,
+    minWidth: 260,
   },
   centerColumn: {
     flex: 2,
-    minWidth: 300,
+    minWidth: 320,
   },
   rightColumn: {
     flex: 1,
-    minWidth: 250,
+    minWidth: 280,
     gap: 16,
   },
   profileCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
   },
-  userAvatarLarge: {
-    width: 80,
+  profileCover: {
     height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
+    backgroundColor: '#5B34F2',
+  },
+  userAvatarLarge: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    marginTop: -44,
+    marginLeft: 20,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
   },
   userName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1C1C1C',
+    color: '#1F2937',
+    marginTop: 12,
+    marginLeft: 20,
   },
   userRole: {
     fontSize: 14,
-    color: '#5F6368',
+    color: '#6B7280',
+    marginTop: 4,
+    marginLeft: 20,
     marginBottom: 16,
   },
+  statsRow: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#E5E7EB',
+  },
   progressContainer: {
-    width: '100%',
-    marginBottom: 16,
+    padding: 20,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  progressPercent: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5B34F2',
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -304,26 +441,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#5B34F2',
     borderRadius: 4,
   },
-  progressText: {
-    fontSize: 12,
-    color: '#5F6368',
-    marginTop: 6,
-    textAlign: 'center',
-  },
   completeButton: {
-    backgroundColor: '#F25F63',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
   },
   completeButtonText: {
-    color: '#FFFFFF',
+    color: '#5B34F2',
     fontWeight: '600',
     fontSize: 14,
   },
   createPostCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,44 +469,44 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   userAvatarSmall: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   postInput: {
     flex: 1,
-    backgroundColor: '#F3F3F3',
-    borderRadius: 25,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 14,
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   createPostButton: {
     backgroundColor: '#5B34F2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 25,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
   },
   createPostButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   postCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 2,
   },
   postHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   postAvatar: {
     width: 48,
@@ -384,68 +517,96 @@ const styles = StyleSheet.create({
   postUserInfo: {
     flex: 1,
   },
+  postNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   postUserName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  postBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  postBadgeText: {
+    fontSize: 10,
   },
   postUserRole: {
-    fontSize: 13,
-    color: '#5F6368',
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   postTime: {
     fontSize: 11,
-    color: '#5F6368',
+    color: '#9CA3AF',
     marginTop: 2,
   },
   postContent: {
     fontSize: 14,
-    color: '#1C1C1C',
+    color: '#374151',
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   courseBadge: {
-    backgroundColor: '#0F6C7A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 12,
     alignSelf: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 14,
+    gap: 8,
+  },
+  courseBadgeIcon: {
+    fontSize: 14,
   },
   courseBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#4F46E5',
+    fontSize: 13,
     fontWeight: '500',
   },
   postActions: {
     flexDirection: 'row',
     gap: 24,
     borderTopWidth: 1,
-    borderTopColor: '#DCE5EC',
-    paddingTop: 12,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 14,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
+  actionIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   actionIcon: {
-    fontSize: 18,
-    color: '#5F6368',
+    fontSize: 16,
   },
   actionIconActive: {
-    color: '#F25F63',
+    backgroundColor: '#FEF2F2',
   },
   actionText: {
-    fontSize: 14,
-    color: '#5F6368',
+    fontSize: 13,
+    color: '#6B7280',
   },
   actionTextActive: {
-    color: '#F25F63',
+    color: '#EF4444',
   },
   suggestionsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -453,49 +614,83 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
+  cardHeader: {
     marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   jobItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#DCE5EC',
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
+  },
+  jobIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  jobIconText: {
+    fontSize: 22,
+  },
+  jobInfo: {
+    flex: 1,
   },
   jobTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   jobCompany: {
     fontSize: 12,
-    color: '#5F6368',
+    color: '#6B7280',
     marginTop: 2,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
   },
   jobMeta: {
     fontSize: 11,
-    color: '#5F6368',
-    marginTop: 2,
+    color: '#9CA3AF',
   },
   saveJobButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#5B34F2',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveJobButtonActive: {
+    backgroundColor: '#10B981',
   },
   saveJobText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveJobTextActive: {
+    fontSize: 14,
   },
   viewMoreButton: {
     marginTop: 12,
     alignItems: 'center',
+    paddingVertical: 10,
   },
   viewMoreText: {
     color: '#5B34F2',
@@ -504,7 +699,7 @@ const styles = StyleSheet.create({
   },
   trendsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -512,28 +707,58 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  trendsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
-    marginBottom: 16,
-  },
   skillItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#DCE5EC',
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
+  },
+  skillInfo: {
+    flex: 1,
   },
   skillName: {
     fontSize: 14,
-    color: '#1C1C1C',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  skillBarContainer: {
+    height: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  skillBar: {
+    height: '100%',
+    backgroundColor: '#0F6C7A',
+    borderRadius: 2,
   },
   skillDemand: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0F6C7A',
+    color: '#10B981',
+  },
+  tipCard: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    padding: 16,
+  },
+  tipIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  tipTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  tipText: {
+    fontSize: 13,
+    color: '#78350F',
+    lineHeight: 18,
   },
   fab: {
     position: 'absolute',
@@ -547,8 +772,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 6,
   },
   fabText: {

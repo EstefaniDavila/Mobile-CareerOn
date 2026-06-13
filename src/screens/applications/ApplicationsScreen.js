@@ -6,7 +6,6 @@ export default function ApplicationsScreen() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   
-  // Estado de las aplicaciones en diferentes columnas
   const [applications, setApplications] = useState({
     saved: [
       {
@@ -113,25 +112,24 @@ export default function ApplicationsScreen() {
     ],
   });
 
-  // Función para generar feedback automático con IA basado en tags
   const generateAIFeedback = (tags, jobTitle, companyName) => {
     const feedbackTemplates = {
-      "Falta profundizar en React Native": "Te recomendamos fortalecer tus conocimientos en React Native. Hay un curso gratuito de 20 horas en nuestra plataforma que cubre desde hooks hasta navegación avanzada. ¡Completarlo aumentará tu match con vacantes similares!",
-      "Expectativa salarial alta": "Tu perfil tiene un gran potencial. Para la posición en {company}, el rango salarial estándar para tu experiencia es de $2,200 - $3,000. Te sugerimos investigar más sobre los rangos salariales del mercado para futuras negociaciones.",
-      "Comunicación técnica": "La comunicación técnica es clave en roles de tecnología. Practica explicar conceptos complejos de forma simple. Nuestro simulador de entrevistas tiene ejercicios específicos para mejorar esta habilidad.",
-      "Falta experiencia en liderazgo": "El liderazgo se construye con práctica. Te invitamos a participar en proyectos open source o liderar iniciativas en tu trabajo actual. En nuestra sección Skills hay un roadmap de liderazgo técnico.",
-      "Métricas de producto limitadas": "Las métricas son fundamentales en producto. Revisa nuestro curso de 'Métricas para Product Managers' donde aprenderás a definir OKRs, KPIs y analizar datos de producto.",
+      "Falta profundizar en React Native": "Te recomendamos fortalecer tus conocimientos en React Native. Hay un curso gratuito de 20 horas en nuestra plataforma.",
+      "Expectativa salarial alta": `Para ${companyName}, el rango salarial estándar es de $2,200 - $3,000. Te sugerimos investigar más los rangos del mercado.`,
+      "Comunicación técnica": "La comunicación técnica es clave. Nuestro simulador de entrevistas tiene ejercicios específicos para mejorar esta habilidad.",
+      "Falta experiencia en liderazgo": "El liderazgo se construye con práctica. Te invitamos a participar en proyectos open source.",
+      "Métricas de producto limitadas": "Las métricas son fundamentales. Revisa nuestro curso de 'Métricas para Product Managers'.",
     };
 
-    let feedback = `Hemos recibido el feedback de ${companyName} para la posición de ${jobTitle}. `;
-    feedback += "Basado en los comentarios del reclutador, identificamos estas áreas de mejora:\n\n";
+    let feedback = `📋 Feedback de ${companyName} para ${jobTitle}\n\n`;
+    feedback += "Áreas de mejora detectadas:\n\n";
     
     tags.forEach(tag => {
-      const template = feedbackTemplates[tag] || `💡 ${tag}: Te sugerimos revisar nuestro contenido educativo para fortalecer esta área.`;
-      feedback += `• ${tag}\n   ${template.replace("{company}", companyName)}\n\n`;
+      const template = feedbackTemplates[tag] || `💡 ${tag}`;
+      feedback += `• ${tag}\n   ${template}\n\n`;
     });
     
-    feedback += "No te desanimes, cada entrevista es una oportunidad de aprendizaje. ¡Estamos aquí para ayudarte a mejorar y conseguir la próxima oportunidad! 💪\n\n¿Quieres que te ayude a prepararte para futuras postulaciones similares?";
+    feedback += "No te desanimes, cada entrevista es una oportunidad de aprendizaje. ¡Seguimos trabajando para la próxima! 💪";
     
     return feedback;
   };
@@ -147,7 +145,7 @@ export default function ApplicationsScreen() {
   };
 
   const moveToNextStage = (application, currentColumn) => {
-    const stages = ['saved', 'applied', 'interview', 'feedback'];
+    const stages = ['saved', 'applied', 'interview'];
     const currentIndex = stages.indexOf(currentColumn);
     const nextStage = stages[currentIndex + 1];
     
@@ -164,9 +162,10 @@ export default function ApplicationsScreen() {
     <TouchableOpacity 
       style={styles.card} 
       onPress={() => handleViewDetails(application, column)}
+      activeOpacity={0.7}
     >
       <View style={styles.cardHeader}>
-        <Image source={{ uri: application.companyLogo }} style={styles.cardLogo} defaultSource={{ uri: 'https://via.placeholder.com/40' }} />
+        <Image source={{ uri: application.companyLogo }} style={styles.cardLogo} />
         <View style={styles.cardHeaderInfo}>
           <Text style={styles.cardTitle}>{application.title}</Text>
           <Text style={styles.cardCompany}>{application.company}</Text>
@@ -203,7 +202,7 @@ export default function ApplicationsScreen() {
         </TouchableOpacity>
       )}
       
-      {column !== 'feedback' && column !== 'feedback' && (
+      {column !== 'feedback' && (
         <TouchableOpacity 
           style={styles.moveButton}
           onPress={(e) => {
@@ -230,10 +229,18 @@ export default function ApplicationsScreen() {
           <Text style={styles.countText}>{count}</Text>
         </View>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 16 }}
+      >
         {applications.map(app => (
           <ColumnCard key={app.id} application={app} column={columnId} />
         ))}
+        {applications.length === 0 && (
+          <View style={styles.emptyColumn}>
+            <Text style={styles.emptyColumnText}>Sin aplicaciones</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -245,7 +252,11 @@ export default function ApplicationsScreen() {
         <Text style={styles.headerSubtitle}>Sigue el progreso de tus aplicaciones</Text>
       </View>
       
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kanbanContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.kanbanContainer}
+      >
         <Column 
           title="Guardadas" 
           count={applications.saved.length}
@@ -276,7 +287,7 @@ export default function ApplicationsScreen() {
         />
       </ScrollView>
 
-      {/* Modal de Feedback con IA */}
+      {/* Modal de Feedback */}
       <Modal visible={showFeedbackModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.feedbackModal}>
@@ -294,7 +305,7 @@ export default function ApplicationsScreen() {
               </View>
               
               <View style={styles.tagsContainer}>
-                <Text style={styles.tagsTitle}>📌 Tags de mejora seleccionados por el reclutador:</Text>
+                <Text style={styles.tagsTitle}>📌 Tags de mejora:</Text>
                 {selectedApplication?.feedbackTags?.map((tag, idx) => (
                   <View key={idx} style={styles.tagItem}>
                     <Text style={styles.tagBullet}>🔴</Text>
@@ -322,7 +333,7 @@ export default function ApplicationsScreen() {
                   <Text style={styles.simulateButtonText}>🎤 Simular entrevista</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.courseButton}>
-                  <Text style={styles.courseButtonText}>📚 Ver cursos sugeridos</Text>
+                  <Text style={styles.courseButtonText}>📚 Ver cursos</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -330,7 +341,7 @@ export default function ApplicationsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Detalles de aplicación */}
+      {/* Modal de Detalles */}
       <Modal visible={showDetailsModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.detailsModal}>
@@ -343,7 +354,7 @@ export default function ApplicationsScreen() {
             
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.detailsCompanyHeader}>
-                <Image source={{ uri: selectedApplication?.companyLogo }} style={styles.detailsLogo} defaultSource={{ uri: 'https://via.placeholder.com/60' }} />
+                <Image source={{ uri: selectedApplication?.companyLogo }} style={styles.detailsLogo} />
                 <View>
                   <Text style={styles.detailsTitle}>{selectedApplication?.title}</Text>
                   <Text style={styles.detailsCompany}>{selectedApplication?.company}</Text>
@@ -360,7 +371,7 @@ export default function ApplicationsScreen() {
                   <Text style={styles.detailValue}>{selectedApplication?.salary}</Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>📅 Postulado</Text>
+                  <Text style={styles.detailLabel}>📅 Fecha</Text>
                   <Text style={styles.detailValue}>{selectedApplication?.appliedDate || selectedApplication?.savedDate}</Text>
                 </View>
                 {selectedApplication?.interviewDate && (
@@ -383,7 +394,7 @@ export default function ApplicationsScreen() {
               </View>
               
               <View style={styles.matchSection}>
-                <Text style={styles.sectionTitle}>🎯 Compatibilidad con tu perfil</Text>
+                <Text style={styles.sectionTitle}>🎯 Compatibilidad</Text>
                 <View style={styles.matchBarLarge}>
                   <View style={[styles.matchFillLarge, { width: `${selectedApplication?.matchPercent}%` }]} />
                 </View>
@@ -391,11 +402,19 @@ export default function ApplicationsScreen() {
               </View>
               
               {selectedApplication?.column !== 'feedback' && (
-                <TouchableOpacity style={styles.continueButton}>
+                <TouchableOpacity 
+                  style={styles.continueButton}
+                  onPress={() => {
+                    if (selectedApplication?.column !== 'feedback') {
+                      moveToNextStage(selectedApplication, selectedApplication.column);
+                    }
+                    setShowDetailsModal(false);
+                  }}
+                >
                   <Text style={styles.continueButtonText}>
-                    {selectedApplication?.column === 'saved' && '📝 Continuar con postulación'}
-                    {selectedApplication?.column === 'applied' && '🎯 Preparar entrevista'}
-                    {selectedApplication?.column === 'interview' && '✅ Marcar como completado'}
+                    {selectedApplication?.column === 'saved' && '📝 Continuar postulación →'}
+                    {selectedApplication?.column === 'applied' && '🎯 Preparar entrevista →'}
+                    {selectedApplication?.column === 'interview' && '✅ Marcar completado →'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -438,7 +457,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F3',
     borderRadius: 16,
     marginRight: 16,
-    maxHeight: '85%',
+    maxHeight: '78%',
+    overflow: 'hidden',
   },
   columnHeader: {
     flexDirection: 'row',
@@ -467,6 +487,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  emptyColumn: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyColumnText: {
+    fontSize: 13,
+    color: '#9CA3AF',
   },
   card: {
     backgroundColor: '#FFFFFF',

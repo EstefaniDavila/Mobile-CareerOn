@@ -7,7 +7,6 @@ export default function SkillsScreen() {
   const [showSkillAlert, setShowSkillAlert] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
 
-  // Estado de habilidades del usuario
   const [userSkills, setUserSkills] = useState({
     "Excel": { level: 80, completed: true, date: "2024-01-10" },
     "SQL": { level: 65, completed: true, date: "2024-01-15" },
@@ -16,7 +15,6 @@ export default function SkillsScreen() {
     "Tableau": { level: 0, completed: false },
   });
 
-  // Roadmaps disponibles
   const roadmaps = {
     "Data Analyst": {
       title: "Data Analyst",
@@ -24,74 +22,27 @@ export default function SkillsScreen() {
       description: "Conviértete en Analista de Datos desde cero",
       totalJobs: 1243,
       avgSalary: "$2,200 - $3,500",
+      color: "#0F6C7A",
       nodes: [
-        { 
-          id: 1, 
-          name: "Excel", 
-          level: "Básico a Intermedio", 
-          demand: "+45%", 
-          demandPercent: 85,
-          duration: "40 horas",
-          courses: [
-            { name: "Excel desde Cero", platform: "CarrerOn", price: "Gratis", url: "", rating: 4.8 },
-            { name: "Excel Avanzado para Datos", platform: "Coursera", price: "$49", url: "", rating: 4.9 },
-          ]
-        },
-        { 
-          id: 2, 
-          name: "SQL", 
-          level: "Intermedio", 
-          demand: "+65%", 
-          demandPercent: 92,
-          duration: "50 horas",
-          courses: [
-            { name: "SQL para Análisis de Datos", platform: "CarrerOn", price: "Gratis", url: "", rating: 4.9 },
-            { name: "The Complete SQL Course", platform: "Udemy", price: "$59", url: "", rating: 4.7 },
-          ]
-        },
-        { 
-          id: 3, 
-          name: "Python", 
-          level: "Intermedio", 
-          demand: "+78%", 
-          demandPercent: 95,
-          duration: "80 horas",
-          courses: [
-            { name: "Python para Data Science", platform: "CarrerOn", price: "Gratis", url: "", rating: 4.9 },
-            { name: "Python Data Analysis", platform: "DataCamp", price: "$29/mes", url: "", rating: 4.8 },
-          ]
-        },
-        { 
-          id: 4, 
-          name: "Power BI", 
-          level: "Intermedio", 
-          demand: "+52%", 
-          demandPercent: 88,
-          duration: "30 horas",
-          courses: [
-            { name: "Power BI Desktop", platform: "CarrerOn", price: "Gratis", url: "", rating: 4.7 },
-            { name: "Power BI Data Visualization", platform: "Microsoft Learn", price: "Gratis", url: "", rating: 4.6 },
-          ]
-        },
-        { 
-          id: 5, 
-          name: "Tableau", 
-          level: "Básico", 
-          demand: "+38%", 
-          demandPercent: 70,
-          duration: "25 horas",
-          courses: [
-            { name: "Tableau Fundamentals", platform: "CarrerOn", price: "Gratis", url: "", rating: 4.5 },
-          ]
-        },
+        { id: 1, name: "Excel", level: "Básico a Intermedio", demand: "+45%", demandPercent: 85, duration: "40 horas", courses: [
+          { name: "Excel desde Cero", platform: "CarrerOn", price: "Gratis", rating: 4.8 },
+          { name: "Excel Avanzado para Datos", platform: "Coursera", price: "$49", rating: 4.9 },
+        ]},
+        { id: 2, name: "SQL", level: "Intermedio", demand: "+65%", demandPercent: 92, duration: "50 horas", courses: [
+          { name: "SQL para Análisis de Datos", platform: "CarrerOn", price: "Gratis", rating: 4.9 },
+        ]},
+        { id: 3, name: "Python", level: "Intermedio", demand: "+78%", demandPercent: 95, duration: "80 horas", courses: [] },
+        { id: 4, name: "Power BI", level: "Intermedio", demand: "+52%", demandPercent: 88, duration: "30 horas", courses: [] },
+        { id: 5, name: "Tableau", level: "Básico", demand: "+38%", demandPercent: 70, duration: "25 horas", courses: [] },
       ]
     },
-    "Frontend Developer": {
+    "Frontend Dev": {
       title: "Frontend Developer",
       icon: "💻",
       description: "Especialízate en desarrollo web frontend",
       totalJobs: 2341,
       avgSalary: "$2,500 - $4,200",
+      color: "#5B34F2",
       nodes: [
         { id: 1, name: "HTML/CSS", level: "Básico", demand: "+55%", demandPercent: 90, duration: "30 horas", courses: [] },
         { id: 2, name: "JavaScript", level: "Intermedio", demand: "+72%", demandPercent: 96, duration: "60 horas", courses: [] },
@@ -100,12 +51,13 @@ export default function SkillsScreen() {
         { id: 5, name: "Next.js", level: "Intermedio", demand: "+62%", demandPercent: 82, duration: "50 horas", courses: [] },
       ]
     },
-    "DevOps Engineer": {
+    "DevOps": {
       title: "DevOps Engineer",
       icon: "⚙️",
       description: "Automatización y cloud computing",
       totalJobs: 876,
       avgSalary: "$3,500 - $5,500",
+      color: "#F59E0B",
       nodes: [
         { id: 1, name: "Linux", level: "Intermedio", demand: "+58%", demandPercent: 85, duration: "40 horas", courses: [] },
         { id: 2, name: "Docker", level: "Intermedio", demand: "+75%", demandPercent: 94, duration: "35 horas", courses: [] },
@@ -116,11 +68,9 @@ export default function SkillsScreen() {
     }
   };
 
+  const rejectedSkills = ["React", "TypeScript"];
   const [selectedRoadmapData, setSelectedRoadmapData] = useState(roadmaps["Data Analyst"]);
   const [activeRoadmap, setActiveRoadmap] = useState("Data Analyst");
-
-  // Habilidades rechazadas del buscador (simulación)
-  const rejectedSkills = ["React", "TypeScript"];
 
   const handleNodePress = (node) => {
     setSelectedSkill(node);
@@ -130,7 +80,11 @@ export default function SkillsScreen() {
   const handleCompleteCourse = (skillName, courseName) => {
     setUserSkills(prev => ({
       ...prev,
-      [skillName]: { ...prev[skillName], level: Math.min(prev[skillName]?.level + 20 || 20, 100), completed: prev[skillName]?.level + 20 >= 100 }
+      [skillName]: { 
+        ...prev[skillName], 
+        level: Math.min(prev[skillName]?.level + 20 || 20, 100), 
+        completed: prev[skillName]?.level + 20 >= 100 
+      }
     }));
   };
 
@@ -142,23 +96,28 @@ export default function SkillsScreen() {
     return "pending";
   };
 
+  const completedCount = Object.values(userSkills).filter(s => s.completed).length;
+  const inProgressCount = Object.values(userSkills).filter(s => s.level > 0 && !s.completed).length;
+  const totalNodes = selectedRoadmapData.nodes.length;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📈 Skills & Roadmap</Text>
+        <Text style={styles.headerTitle}>Skills & Roadmap</Text>
         <Text style={styles.headerSubtitle}>Construye tu plan de carrera</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Banner de habilidades rechazadas del buscador */}
+        {/* Banner de alerta */}
         {rejectedSkills.length > 0 && (
           <TouchableOpacity style={styles.alertBanner} onPress={() => setShowSkillAlert(true)}>
-            <Text style={styles.alertIcon}>⚠️</Text>
+            <View style={styles.alertIconCircle}>
+              <Text style={styles.alertIcon}>⚠️</Text>
+            </View>
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>Habilidades que te faltan</Text>
               <Text style={styles.alertText}>
-                Fuiste rechazado en vacantes por: {rejectedSkills.join(", ")}. 
-                Aprende estas habilidades para calificar.
+                Fuiste rechazado por {rejectedSkills.join(", ")}
               </Text>
             </View>
             <Text style={styles.alertArrow}>→</Text>
@@ -186,33 +145,42 @@ export default function SkillsScreen() {
 
         {/* Info del roadmap */}
         <View style={styles.roadmapInfo}>
-          <Text style={styles.roadmapTitle}>{selectedRoadmapData.icon} {selectedRoadmapData.title}</Text>
-          <Text style={styles.roadmapDescription}>{selectedRoadmapData.description}</Text>
+          <View style={[styles.roadmapHeader, { backgroundColor: selectedRoadmapData.color + '10' }]}>
+            <Text style={styles.roadmapIcon}>{selectedRoadmapData.icon}</Text>
+            <View>
+              <Text style={styles.roadmapTitle}>{selectedRoadmapData.title}</Text>
+              <Text style={styles.roadmapDescription}>{selectedRoadmapData.description}</Text>
+            </View>
+          </View>
+          
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{selectedRoadmapData.totalJobs}</Text>
-              <Text style={styles.statLabel}>Vacantes activas</Text>
+              <Text style={styles.statLabel}>Vacantes</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{selectedRoadmapData.avgSalary}</Text>
-              <Text style={styles.statLabel}>Salario promedio</Text>
+              <Text style={styles.statLabel}>Salario</Text>
             </View>
           </View>
         </View>
 
         {/* Roadmap visual */}
         <View style={styles.roadmapContainer}>
+          <Text style={styles.sectionTitle}>Ruta de aprendizaje</Text>
+          
           {selectedRoadmapData.nodes.map((node, index) => {
             const status = getNodeStatus(node.name);
+            const isRejected = rejectedSkills.includes(node.name);
+            
             return (
               <View key={node.id} style={styles.roadmapNode}>
                 {/* Línea conectora */}
                 {index > 0 && (
                   <View style={[
                     styles.connectorLine,
-                    status === "completed" && styles.connectorLineCompleted,
-                    status === "in-progress" && styles.connectorLineProgress
+                    status === "completed" && styles.connectorLineCompleted
                   ]} />
                 )}
                 
@@ -222,46 +190,65 @@ export default function SkillsScreen() {
                     styles.nodeCard,
                     status === "completed" && styles.nodeCardCompleted,
                     status === "in-progress" && styles.nodeCardProgress,
-                    rejectedSkills.includes(node.name) && styles.nodeCardRejected
+                    isRejected && !userSkills[node.name]?.completed && styles.nodeCardRejected
                   ]}
                   onPress={() => handleNodePress(node)}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.nodeHeader}>
-                    <View style={styles.nodeIconContainer}>
-                      <Text style={styles.nodeIcon}>
-                        {status === "completed" ? "✅" : 
-                         status === "in-progress" ? "🔄" : 
-                         rejectedSkills.includes(node.name) ? "⚠️" : "📘"}
+                  <View style={styles.nodeLeft}>
+                    <View style={[
+                      styles.nodeStatusIcon,
+                      status === "completed" && styles.nodeStatusCompleted,
+                      status === "in-progress" && styles.nodeStatusProgress,
+                      isRejected && !userSkills[node.name]?.completed && styles.nodeStatusRejected
+                    ]}>
+                      <Text style={styles.nodeStatusText}>
+                        {status === "completed" ? "✓" : 
+                         status === "in-progress" ? "●" : 
+                         isRejected ? "!" : index + 1}
                       </Text>
                     </View>
-                    <Text style={styles.nodeName}>{node.name}</Text>
-                    {status === "completed" && <Text style={styles.completedBadge}>Completado</Text>}
-                    {rejectedSkills.includes(node.name) && !userSkills[node.name]?.completed && (
-                      <Text style={styles.rejectedBadge}>Te falta</Text>
-                    )}
-                  </View>
-                  
-                  <View style={styles.nodeDetails}>
-                    <View style={styles.demandContainer}>
-                      <Text style={styles.demandLabel}>Demanda en mercado</Text>
-                      <View style={styles.demandBar}>
-                        <View style={[styles.demandFill, { width: `${node.demandPercent}%` }]} />
-                      </View>
-                      <Text style={styles.demandValue}>{node.demand}</Text>
-                    </View>
                     
-                    <View style={styles.nodeMeta}>
-                      <Text style={styles.metaText}>⏱️ {node.duration}</Text>
-                      <Text style={styles.metaText}>📊 {node.level}</Text>
+                    <View style={styles.nodeContent}>
+                      <Text style={styles.nodeName}>{node.name}</Text>
+                      <View style={styles.nodeTags}>
+                        <View style={styles.tag}>
+                          <Text style={styles.tagText}>{node.level}</Text>
+                        </View>
+                        <View style={styles.tag}>
+                          <Text style={styles.tagText}>⏱️ {node.duration}</Text>
+                        </View>
+                      </View>
+                      
+                      {/* Barra de demanda */}
+                      <View style={styles.demandWrapper}>
+                        <View style={styles.demandBar}>
+                          <View style={[styles.demandFill, { width: `${node.demandPercent}%`, backgroundColor: selectedRoadmapData.color }]} />
+                        </View>
+                        <Text style={styles.demandValue}>{node.demand}</Text>
+                      </View>
+                      
+                      {/* Progreso del usuario */}
+                      {userSkills[node.name] && userSkills[node.name].level > 0 && !userSkills[node.name].completed && (
+                        <View style={styles.userProgress}>
+                          <View style={styles.userProgressBar}>
+                            <View style={[styles.userProgressFill, { width: `${userSkills[node.name].level}%` }]} />
+                          </View>
+                          <Text style={styles.userProgressText}>{userSkills[node.name].level}% completado</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                   
-                  {userSkills[node.name] && userSkills[node.name].level > 0 && !userSkills[node.name].completed && (
-                    <View style={styles.progressContainer}>
-                      <View style={styles.skillProgressBar}>
-                        <View style={[styles.skillProgressFill, { width: `${userSkills[node.name].level}%` }]} />
-                      </View>
-                      <Text style={styles.progressText}>{userSkills[node.name].level}% completado</Text>
+                  {status === "completed" && (
+                    <View style={styles.completedBadge}>
+                      <Text style={styles.completedBadgeText}>✔</Text>
+                    </View>
+                  )}
+                  
+                  {isRejected && !userSkills[node.name]?.completed && (
+                    <View style={styles.rejectedBadge}>
+                      <Text style={styles.rejectedBadgeText}>!</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -272,27 +259,29 @@ export default function SkillsScreen() {
 
         {/* Estadísticas generales */}
         <View style={styles.statsContainer}>
-          <Text style={styles.statsTitle}>📊 Tu progreso general</Text>
+          <Text style={styles.sectionTitle}>Tu progreso</Text>
+          
           <View style={styles.globalProgress}>
-            <View style={styles.globalProgressBar}>
-              <View style={[styles.globalProgressFill, { width: `${Object.values(userSkills).filter(s => s.completed).length / selectedRoadmapData.nodes.length * 100}%` }]} />
+            <View style={styles.globalProgressHeader}>
+              <Text style={styles.globalProgressLabel}>Completado</Text>
+              <Text style={styles.globalProgressPercent}>{Math.round(completedCount / totalNodes * 100)}%</Text>
             </View>
-            <Text style={styles.globalProgressText}>
-              {Object.values(userSkills).filter(s => s.completed).length} de {selectedRoadmapData.nodes.length} habilidades completadas
-            </Text>
+            <View style={styles.globalProgressBar}>
+              <View style={[styles.globalProgressFill, { width: `${completedCount / totalNodes * 100}%` }]} />
+            </View>
           </View>
           
           <View style={styles.skillStats}>
             <View style={styles.skillStatCard}>
-              <Text style={styles.skillStatNumber}>{Object.values(userSkills).filter(s => s.completed).length}</Text>
+              <Text style={[styles.skillStatNumber, { color: selectedRoadmapData.color }]}>{completedCount}</Text>
               <Text style={styles.skillStatLabel}>Completadas</Text>
             </View>
             <View style={styles.skillStatCard}>
-              <Text style={styles.skillStatNumber}>{Object.values(userSkills).filter(s => s.level > 0 && !s.completed).length}</Text>
+              <Text style={[styles.skillStatNumber, { color: "#F59E0B" }]}>{inProgressCount}</Text>
               <Text style={styles.skillStatLabel}>En curso</Text>
             </View>
             <View style={styles.skillStatCard}>
-              <Text style={styles.skillStatNumber}>{selectedRoadmapData.nodes.length - Object.values(userSkills).filter(s => s.completed).length}</Text>
+              <Text style={[styles.skillStatNumber, { color: "#9CA3AF" }]}>{totalNodes - completedCount - inProgressCount}</Text>
               <Text style={styles.skillStatLabel}>Pendientes</Text>
             </View>
           </View>
@@ -304,7 +293,7 @@ export default function SkillsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.courseModal}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>📚 Aprende {selectedSkill?.name}</Text>
+              <Text style={styles.modalTitle}>Aprender {selectedSkill?.name}</Text>
               <TouchableOpacity onPress={() => setShowCourseModal(false)}>
                 <Text style={styles.closeModal}>✕</Text>
               </TouchableOpacity>
@@ -312,27 +301,33 @@ export default function SkillsScreen() {
             
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.skillInfoModal}>
-                <View style={styles.demandContainerModal}>
-                  <Text style={styles.demandLabelModal}>Demanda en el mercado</Text>
-                  <View style={styles.demandBarModal}>
-                    <View style={[styles.demandFillModal, { width: `${selectedSkill?.demandPercent}%` }]} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Demanda</Text>
+                  <View style={styles.infoDemandBar}>
+                    <View style={[styles.infoDemandFill, { width: `${selectedSkill?.demandPercent}%` }]} />
                   </View>
-                  <Text style={styles.demandValueModal}>{selectedSkill?.demand}</Text>
+                  <Text style={styles.infoDemandValue}>{selectedSkill?.demand}</Text>
                 </View>
-                <Text style={styles.durationText}>⏱️ Duración estimada: {selectedSkill?.duration}</Text>
-                <Text style={styles.levelText}>📊 Nivel requerido: {selectedSkill?.level}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Duración</Text>
+                  <Text style={styles.infoValue}>⏱️ {selectedSkill?.duration}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Nivel</Text>
+                  <Text style={styles.infoValue}>📊 {selectedSkill?.level}</Text>
+                </View>
               </View>
               
-              <Text style={styles.coursesTitle}>🎓 Cursos recomendados</Text>
+              <Text style={styles.coursesTitle}>Cursos recomendados</Text>
               {selectedSkill?.courses.map((course, idx) => (
                 <View key={idx} style={styles.courseCard}>
-                  <View style={styles.courseHeader}>
+                  <View>
                     <Text style={styles.courseName}>{course.name}</Text>
                     <Text style={styles.coursePlatform}>{course.platform}</Text>
                   </View>
-                  <View style={styles.courseFooter}>
+                  <View style={styles.courseRight}>
                     <View style={styles.ratingContainer}>
-                      <Text style={styles.ratingStar}>⭐</Text>
+                      <Text style={styles.ratingStar}>★</Text>
                       <Text style={styles.ratingText}>{course.rating}</Text>
                     </View>
                     <Text style={[styles.coursePrice, course.price === "Gratis" && styles.freePrice]}>
@@ -342,45 +337,46 @@ export default function SkillsScreen() {
                       style={styles.startCourseButton}
                       onPress={() => handleCompleteCourse(selectedSkill.name, course.name)}
                     >
-                      <Text style={styles.startCourseText}>Comenzar</Text>
+                      <Text style={styles.startCourseText}>Iniciar</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ))}
               
               <TouchableOpacity style={styles.simulateButtonModal}>
-                <Text style={styles.simulateButtonTextModal}>🎤 Simular entrevista para {selectedSkill?.name}</Text>
+                <Text style={styles.simulateButtonTextModal}>Simular entrevista técnica</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Modal de alerta de habilidades */}
+      {/* Modal de alerta */}
       <Modal visible={showSkillAlert} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.alertModal}>
-            <View style={styles.alertModalHeader}>
+            <View style={styles.alertModalIconCircle}>
               <Text style={styles.alertModalIcon}>⚠️</Text>
-              <Text style={styles.alertModalTitle}>Habilidades que necesitas</Text>
             </View>
+            <Text style={styles.alertModalTitle}>Habilidades necesarias</Text>
             <Text style={styles.alertModalText}>
-              Basado en las vacantes a las que aplicaste y fuiste rechazado, 
-              estas son las habilidades que debes desarrollar para calificar:
+              Basado en tus rechazos, necesitas desarrollar estas habilidades:
             </Text>
+            
             <View style={styles.rejectedSkillsList}>
               {rejectedSkills.map(skill => (
                 <View key={skill} style={styles.rejectedSkillItem}>
                   <Text style={styles.rejectedSkillIcon}>📘</Text>
                   <Text style={styles.rejectedSkillName}>{skill}</Text>
                   <TouchableOpacity style={styles.learnNowButton}>
-                    <Text style={styles.learnNowText}>Aprender ahora →</Text>
+                    <Text style={styles.learnNowText}>Aprender →</Text>
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
+            
             <TouchableOpacity style={styles.closeAlertButton} onPress={() => setShowSkillAlert(false)}>
-              <Text style={styles.closeAlertText}>Cerrar</Text>
+              <Text style={styles.closeAlertText}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -392,7 +388,7 @@ export default function SkillsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#F9FAFB',
   },
   header: {
     backgroundColor: '#4320C9',
@@ -410,38 +406,49 @@ const styles = StyleSheet.create({
     color: '#DCE5EC',
     marginTop: 4,
   },
+  // Alert Banner
   alertBanner: {
-    backgroundColor: '#F25F63',
+    backgroundColor: '#FEF2F2',
     margin: 16,
     marginBottom: 8,
-    padding: 16,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  alertIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   alertIcon: {
-    fontSize: 24,
+    fontSize: 18,
   },
   alertContent: {
     flex: 1,
   },
   alertTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   alertText: {
-    color: '#FFFFFF',
+    color: '#DC2626',
     fontSize: 12,
-    opacity: 0.95,
   },
   alertArrow: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#DC2626',
+    fontSize: 16,
     fontWeight: 'bold',
   },
+  // Roadmap Selector
   roadmapSelector: {
     flexDirection: 'row',
     margin: 16,
@@ -450,224 +457,294 @@ const styles = StyleSheet.create({
   selectorButton: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingVertical: 10,
+    borderRadius: 30,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   selectorButtonActive: {
     backgroundColor: '#5B34F2',
+    borderColor: '#5B34F2',
   },
   selectorIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   selectorText: {
-    color: '#5F6368',
+    color: '#6B7280',
     fontWeight: '500',
+    fontSize: 12,
   },
   selectorTextActive: {
     color: '#FFFFFF',
   },
+  // Roadmap Info
   roadmapInfo: {
     backgroundColor: '#FFFFFF',
-    margin: 16,
-    marginTop: 0,
+    marginHorizontal: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  roadmapHeader: {
     padding: 20,
-    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  roadmapIcon: {
+    fontSize: 40,
   },
   roadmapTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1C1C1C',
-    marginBottom: 8,
+    color: '#1F2937',
   },
   roadmapDescription: {
-    fontSize: 14,
-    color: '#5F6368',
-    marginBottom: 16,
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderTopWidth: 1,
-    borderTopColor: '#DCE5EC',
+    borderTopColor: '#F3F4F6',
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
   },
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0F6C7A',
+    color: '#1F2937',
   },
   statLabel: {
-    fontSize: 12,
-    color: '#5F6368',
+    fontSize: 11,
+    color: '#6B7280',
     marginTop: 4,
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#E5E7EB',
   },
+  // Roadmap Nodes
   roadmapContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+    marginLeft: 4,
   },
   roadmapNode: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   connectorLine: {
     position: 'absolute',
-    top: -20,
-    left: 30,
-    width: 3,
-    height: 20,
-    backgroundColor: '#DCE5EC',
+    top: -12,
+    left: 20,
+    width: 2,
+    height: 12,
+    backgroundColor: '#E5E7EB',
   },
   connectorLineCompleted: {
-    backgroundColor: '#0F6C7A',
-  },
-  connectorLineProgress: {
-    backgroundColor: '#5B34F2',
+    backgroundColor: '#10B981',
   },
   nodeCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#DCE5EC',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   nodeCardCompleted: {
-    borderLeftColor: '#0F6C7A',
-    backgroundColor: '#F0F7F5',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
   },
   nodeCardProgress: {
-    borderLeftColor: '#5B34F2',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   nodeCardRejected: {
-    borderLeftColor: '#F25F63',
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
   },
-  nodeHeader: {
+  nodeLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 12,
+    flex: 1,
   },
-  nodeIconContainer: {
+  nodeStatusIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F3F3',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nodeIcon: {
-    fontSize: 18,
+  nodeStatusCompleted: {
+    backgroundColor: '#10B981',
   },
-  nodeName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
+  nodeStatusProgress: {
+    backgroundColor: '#3B82F6',
+  },
+  nodeStatusRejected: {
+    backgroundColor: '#EF4444',
+  },
+  nodeStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  nodeContent: {
     flex: 1,
   },
-  completedBadge: {
-    backgroundColor: '#0F6C7A',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  nodeName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
   },
-  rejectedBadge: {
-    backgroundColor: '#F25F63',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  nodeDetails: {
-    gap: 12,
-  },
-  demandContainer: {
+  nodeTags: {
+    flexDirection: 'row',
     gap: 6,
+    marginBottom: 10,
   },
-  demandLabel: {
-    fontSize: 11,
-    color: '#5F6368',
+  tag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 10,
+    color: '#6B7280',
+  },
+  demandWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
   demandBar: {
-    height: 6,
-    backgroundColor: '#DCE5EC',
-    borderRadius: 3,
+    flex: 1,
+    height: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 2,
     overflow: 'hidden',
   },
   demandFill: {
     height: '100%',
-    backgroundColor: '#0F6C7A',
-    borderRadius: 3,
+    borderRadius: 2,
   },
   demandValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0F6C7A',
-  },
-  nodeMeta: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  metaText: {
     fontSize: 11,
-    color: '#5F6368',
+    fontWeight: '500',
+    color: '#1F2937',
   },
-  progressContainer: {
-    marginTop: 12,
-    gap: 4,
+  userProgress: {
+    marginTop: 8,
   },
-  skillProgressBar: {
-    height: 4,
-    backgroundColor: '#DCE5EC',
+  userProgressBar: {
+    height: 3,
+    backgroundColor: '#F3F4F6',
     borderRadius: 2,
     overflow: 'hidden',
+    marginBottom: 4,
   },
-  skillProgressFill: {
+  userProgressFill: {
     height: '100%',
     backgroundColor: '#5B34F2',
     borderRadius: 2,
   },
-  progressText: {
+  userProgressText: {
     fontSize: 10,
     color: '#5B34F2',
   },
+  completedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  rejectedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // Stats Container
   statsContainer: {
     backgroundColor: '#FFFFFF',
     margin: 16,
-    marginTop: 0,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 30,
-  },
-  statsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
-    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   globalProgress: {
     marginBottom: 20,
-    gap: 8,
+  },
+  globalProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  globalProgressLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  globalProgressPercent: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5B34F2',
   },
   globalProgressBar: {
     height: 8,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#F3F4F6',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -676,31 +753,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#5B34F2',
     borderRadius: 4,
   },
-  globalProgressText: {
-    fontSize: 12,
-    color: '#5F6368',
-  },
   skillStats: {
     flexDirection: 'row',
     gap: 12,
   },
   skillStatCard: {
     flex: 1,
-    backgroundColor: '#F3F3F3',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
   },
   skillStatNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#5B34F2',
   },
   skillStatLabel: {
     fontSize: 11,
-    color: '#5F6368',
+    color: '#6B7280',
     marginTop: 4,
   },
+  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -711,13 +784,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '90%',
-  },
-  alertModal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-    margin: 20,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -726,82 +793,82 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   closeModal: {
     fontSize: 24,
-    color: '#5F6368',
+    color: '#6B7280',
     padding: 4,
   },
   skillInfoModal: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 20,
-    gap: 8,
+    gap: 12,
   },
-  demandContainerModal: {
-    gap: 4,
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  demandLabelModal: {
-    fontSize: 12,
-    color: '#5F6368',
+  infoLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    width: 60,
   },
-  demandBarModal: {
+  infoDemandBar: {
+    flex: 1,
     height: 6,
-    backgroundColor: '#DCE5EC',
+    backgroundColor: '#E5E7EB',
     borderRadius: 3,
     overflow: 'hidden',
   },
-  demandFillModal: {
+  infoDemandFill: {
     height: '100%',
     backgroundColor: '#0F6C7A',
     borderRadius: 3,
   },
-  demandValueModal: {
+  infoDemandValue: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#0F6C7A',
+    fontWeight: '500',
+    color: '#1F2937',
   },
-  durationText: {
+  infoValue: {
     fontSize: 13,
-    color: '#1C1C1C',
-  },
-  levelText: {
-    fontSize: 13,
-    color: '#1C1C1C',
+    color: '#1F2937',
+    flex: 1,
   },
   coursesTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1C',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 12,
   },
   courseCard: {
-    backgroundColor: '#F3F3F3',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  courseHeader: {
-    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   courseName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1C',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
   },
   coursePlatform: {
-    fontSize: 12,
-    color: '#5F6368',
+    fontSize: 11,
+    color: '#6B7280',
     marginTop: 2,
   },
-  courseFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  courseRight: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -809,35 +876,36 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingStar: {
-    fontSize: 12,
+    fontSize: 11,
+    color: '#F59E0B',
   },
   ratingText: {
-    fontSize: 12,
-    color: '#5F6368',
+    fontSize: 11,
+    color: '#6B7280',
   },
   coursePrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C1C1C',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1F2937',
   },
   freePrice: {
-    color: '#0F6C7A',
+    color: '#10B981',
   },
   startCourseButton: {
     backgroundColor: '#5B34F2',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 16,
   },
   startCourseText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   simulateButtonModal: {
     backgroundColor: '#0F6C7A',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     marginTop: 12,
     marginBottom: 20,
@@ -845,35 +913,49 @@ const styles = StyleSheet.create({
   simulateButtonTextModal: {
     color: '#FFFFFF',
     fontWeight: '600',
+    fontSize: 14,
   },
-  alertModalHeader: {
-    flexDirection: 'row',
+  alertModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    margin: 20,
     alignItems: 'center',
-    gap: 12,
+  },
+  alertModalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
   },
   alertModalIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   alertModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1C1C1C',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   alertModalText: {
     fontSize: 14,
-    color: '#5F6368',
+    color: '#6B7280',
+    textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
   },
   rejectedSkillsList: {
-    gap: 12,
+    width: '100%',
+    gap: 10,
     marginBottom: 20,
   },
   rejectedSkillItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#F9FAFB',
     padding: 12,
     borderRadius: 12,
     gap: 12,
@@ -883,9 +965,9 @@ const styles = StyleSheet.create({
   },
   rejectedSkillName: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    color: '#1C1C1C',
+    color: '#1F2937',
   },
   learnNowButton: {
     backgroundColor: '#5B34F2',
@@ -895,17 +977,18 @@ const styles = StyleSheet.create({
   },
   learnNowText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   closeAlertButton: {
-    backgroundColor: '#F3F3F3',
+    backgroundColor: '#F3F4F6',
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
+    width: '100%',
   },
   closeAlertText: {
-    color: '#5F6368',
+    color: '#6B7280',
     fontWeight: '500',
   },
 });
