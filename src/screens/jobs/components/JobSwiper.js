@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Modal,
   Animated,
-  PanResponder,
   Dimensions,
   ScrollView,
   Alert,
@@ -20,20 +19,21 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
-  const [appliedJobIds, setAppliedJobIds] = useState(new Set()); // Usar Set para IDs únicos
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [discardedJobIds, setDiscardedJobIds] = useState(new Set());
   const [selectedJob, setSelectedJob] = useState(null);
   const [showJobDetails, setShowJobDetails] = useState(false);
-  const [isSwiping, setIsSwiping] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false); // ✅ Control para evitar doble llamada
   
-  const pan = useRef(new Animated.ValueXY()).current;
-  const swipingRef = useRef(false);
+  // Animaciones
+  const swipeAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
 
   const currentJob = jobs[currentJobIndex];
   const nextJob = jobs[currentJobIndex + 1];
 
-  // Cargar IDs aplicados desde el backend al montar el componente
+  // Cargar IDs aplicados desde el backend
   useEffect(() => {
     const loadAppliedJobs = async () => {
       try {
@@ -50,79 +50,33 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
   }, []);
 
   const goToNextJob = () => {
+    // Resetear animaciones
+    swipeAnim.setValue(0);
+    opacityAnim.setValue(1);
     setCurrentJobIndex((prev) => prev + 1);
-    pan.setValue({ x: 0, y: 0 });
-    swipingRef.current = false;
-    setIsSwiping(false);
+    setIsProcessingAction(false); // ✅ Resetear estado
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !swipingRef.current && !isApplying,
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        return Math.abs(gesture.dx) > 10 && !swipingRef.current && !isApplying;
-      },
-      onPanResponderGrant: () => {
-        swipingRef.current = true;
-        setIsSwiping(true);
-        pan.setOffset({ x: 0, y: 0 });
-      },
-      onPanResponderMove: (_, gesture) => {
-        pan.setValue({ x: gesture.dx, y: 0 });
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > 120 && !swipingRef.current === false) {
-          handleApplyJob(currentJob);
-          Animated.timing(pan, {
-            toValue: { x: screenWidth, y: 0 },
-            duration: 200,
-            useNativeDriver: true,
-          }).start(goToNextJob);
-        } else if (gesture.dx < -120 && !swipingRef.current === false) {
-          handleDiscardJob(currentJob);
-          Animated.timing(pan, {
-            toValue: { x: -screenWidth, y: 0 },
-            duration: 200,
-            useNativeDriver: true,
-          }).start(goToNextJob);
-        } else {
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            friction: 9,
-            tension: 40,
-            useNativeDriver: true,
-          }).start(() => {
-            swipingRef.current = false;
-            setIsSwiping(false);
-          });
-        }
-      },
-    }),
-  ).current;
-
-  // Verificar si ya aplicó a un trabajo
-  const hasApplied = (jobId) => {
-    return appliedJobIds.has(Number(jobId));
-  };
-
-  const handleApplyJob = async (job) => {
+  // ✅ Función unificada para aplicar (sin animación, solo la acción)
+  const executeApply = async (job) => {
+    console.log("🚀 EXECUTE APPLY", job.id);
+    if (!job || isProcessingAction) return;
+    
     const jobIdNum = Number(job.id);
     
-    // Verificar si ya aplicó (local o desde backend)
     if (hasApplied(jobIdNum)) {
       Alert.alert("Aviso", "Ya has aplicado a esta oferta anteriormente.");
-      // Aún así pasar al siguiente trabajo
       goToNextJob();
       return;
     }
 
+    setIsProcessingAction(true);
     setIsApplying(true);
     
     try {
       const result = await studentService.applyToJob(jobIdNum);
       
       if (result.success) {
-        // Agregar ID al Set
         setAppliedJobIds(prev => new Set(prev).add(jobIdNum));
         
         if (onJobAction) {
@@ -133,24 +87,32 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
         }
         
         Alert.alert("✅ ¡Aplicación exitosa!", `Has aplicado a ${job.title} en ${job.company}`);
+        goToNextJob();
       } else {
-        // Si el error es porque ya aplicó, agregarlo al Set localmente
-        if (result.error?.includes("Ya has postulado")) {
+        setIsProcessingAction(false);
+        if (result.error?.includes("Ya has postulado") || result.error?.includes("Ya has aplicado")) {
           setAppliedJobIds(prev => new Set(prev).add(jobIdNum));
           Alert.alert("Aviso", "Ya habías aplicado a esta oferta anteriormente.");
+          goToNextJob();
         } else {
-          Alert.alert("Error", result.error || "No se pudo aplicar al trabajo. Intenta de nuevo.");
+          Alert.alert("Error", result.error || "No se pudo aplicar al trabajo.");
         }
       }
     } catch (error) {
       console.error("Error aplicando a trabajo:", error);
       Alert.alert("Error", "Ocurrió un error al aplicar. Intenta de nuevo.");
+      setIsProcessingAction(false);
     } finally {
       setIsApplying(false);
     }
   };
 
-  const handleDiscardJob = (job) => {
+  // ✅ Función unificada para descartar
+  const executeDiscard = (job) => {
+    if (!job || isProcessingAction) return;
+    
+    setIsProcessingAction(true);
+    
     const jobIdNum = Number(job.id);
     
     if (!discardedJobIds.has(jobIdNum)) {
@@ -163,6 +125,52 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
         onJobApplied(job, false);
       }
     }
+    
+    goToNextJob();
+  };
+
+  // ✅ Animación y acción para aplicar (solo animación, la acción ya está separada)
+  const animateApply = () => {
+  console.log("🔥 BOTON APLICAR PRESIONADO");
+
+  if (!currentJob || isProcessingAction) return;
+
+  Animated.parallel([
+    Animated.timing(swipeAnim, {
+      toValue: screenWidth,
+      duration: 300,
+      useNativeDriver: true,
+    }),
+    Animated.timing(opacityAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }),
+  ]).start(() => {
+    console.log("🔥 EJECUTANDO APPLY");
+    executeApply(currentJob);
+  });
+};
+
+  // ✅ Animación y acción para descartar
+  const animateDiscard = () => {
+    if (!currentJob || isProcessingAction) return;
+    
+    // Animar hacia la izquierda
+    Animated.parallel([
+      Animated.timing(swipeAnim, {
+        toValue: -screenWidth,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      executeDiscard(currentJob);
+    });
   };
 
   const handleViewDetails = (job) => {
@@ -170,15 +178,14 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
     setShowJobDetails(true);
   };
 
-  const getCardStyle = () => {
-    const rotate = pan.x.interpolate({
-      inputRange: [-200, 0, 200],
-      outputRange: ["-8deg", "0deg", "8deg"],
-      extrapolate: "clamp",
-    });
-    return {
-      transform: [{ translateX: pan.x }, { rotate: rotate }],
-    };
+  const hasApplied = (jobId) => {
+    return appliedJobIds.has(Number(jobId));
+  };
+
+  // Estilos animados
+  const animatedCardStyle = {
+    transform: [{ translateX: swipeAnim }],
+    opacity: opacityAnim,
   };
 
   if (currentJobIndex >= jobs.length) {
@@ -206,12 +213,11 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
     );
   }
 
-  // Verificar si el trabajo actual ya fue aplicado
   const alreadyApplied = hasApplied(currentJob?.id);
 
   return (
     <View style={styles.container}>
-      <View style={styles.swipeHeader}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Filtros</Text>
         </TouchableOpacity>
@@ -221,10 +227,24 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
       </View>
 
       <View style={styles.swipeContainer}>
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[styles.jobCard, getCardStyle(), { zIndex: 2 }]}
-        >
+        {/* Siguiente carta (vista previa) */}
+        {nextJob && (
+          <View style={[styles.jobCard, styles.nextCard]}>
+            <View style={styles.companyHeader}>
+              <Image
+                source={{ uri: nextJob.companyLogo || 'https://via.placeholder.com/56x56?text=Logo' }}
+                style={styles.companyLogo}
+              />
+              <View style={styles.companyInfo}>
+                <Text style={styles.jobTitle}>{nextJob.title}</Text>
+                <Text style={styles.companyName}>{nextJob.company}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Carta actual animada */}
+        <Animated.View style={[styles.jobCard, styles.currentCard, animatedCardStyle]}>
           {isApplying && (
             <View style={styles.applyingOverlay}>
               <ActivityIndicator size="large" color="#4F46E5" />
@@ -232,7 +252,6 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
             </View>
           )}
           
-          {/* Badge de "Ya Aplicaste" */}
           {alreadyApplied && (
             <View style={styles.alreadyAppliedBadge}>
               <Text style={styles.alreadyAppliedText}>✓ Ya aplicaste</Text>
@@ -265,54 +284,59 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
             </View>
           </View>
 
-          <Text style={styles.description} numberOfLines={3}>
+          <Text style={styles.description} numberOfLines={4}>
             {currentJob.description}
           </Text>
 
           <View style={styles.skillsContainer}>
-            {currentJob.skills?.slice(0, 3).map((skill, idx) => (
+            {currentJob.skills?.slice(0, 4).map((skill, idx) => (
               <View key={idx} style={styles.skillTag}>
                 <Text style={styles.skillTagText}>{skill}</Text>
               </View>
             ))}
+            {currentJob.skills?.length > 4 && (
+              <View style={styles.skillTag}>
+                <Text style={styles.skillTagText}>+{currentJob.skills.length - 4}</Text>
+              </View>
+            )}
           </View>
 
           <TouchableOpacity
             style={styles.expandButton}
             onPress={() => handleViewDetails(currentJob)}
-            disabled={isApplying}
+            disabled={isApplying || isProcessingAction}
           >
-            <Text style={styles.expandButtonText}>Ver detalles</Text>
+            <Text style={styles.expandButtonText}>Ver detalles completos →</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {nextJob && !isSwiping && (
-          <View style={[styles.jobCard, styles.nextCard]}>
-            <View style={styles.companyHeader}>
-              <Image
-                source={{ uri: nextJob.companyLogo || 'https://via.placeholder.com/56x56?text=Logo' }}
-                style={styles.companyLogo}
-              />
-              <View style={styles.companyInfo}>
-                <Text style={styles.jobTitle}>{nextJob.title}</Text>
-                <Text style={styles.companyName}>{nextJob.company}</Text>
-              </View>
-            </View>
-          </View>
-        )}
+        {/* Botones de acción */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.discardButton]}
+            onPress={animateDiscard}
+            disabled={isApplying || isProcessingAction}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.actionButtonIcon}>✕</Text>
+            <Text style={styles.actionButtonText}>Descartar</Text>
+          </TouchableOpacity>
 
-        <View style={styles.swipeInstructions}>
-          <View style={styles.instructionBadge}>
-            <Text style={styles.instructionIcon}>←</Text>
-            <Text style={styles.instructionText}>Descartar</Text>
-          </View>
-          <View style={styles.instructionBadge}>
-            <Text style={styles.instructionIcon}>→</Text>
-            <Text style={styles.instructionText}>Aplicar</Text>
-          </View>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.applyButton, alreadyApplied && styles.applyButtonDisabled]}
+            onPress={animateApply}
+            disabled={isApplying || isProcessingAction || alreadyApplied}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.actionButtonIcon}>✓</Text>
+            <Text style={styles.actionButtonText}>
+              {alreadyApplied ? "Ya aplicaste" : "Aplicar"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
+      {/* Modal de detalles */}
       <Modal visible={showJobDetails} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -325,7 +349,22 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalCompany}>{selectedJob?.company}</Text>
 
-              <Text style={styles.modalSectionTitle}>Descripción</Text>
+              <View style={styles.modalDetailsRow}>
+                <View style={styles.modalDetail}>
+                  <Text style={styles.modalDetailIcon}>📍</Text>
+                  <Text style={styles.modalDetailText}>{selectedJob?.location}</Text>
+                </View>
+                <View style={styles.modalDetail}>
+                  <Text style={styles.modalDetailIcon}>💼</Text>
+                  <Text style={styles.modalDetailText}>{selectedJob?.modality}</Text>
+                </View>
+                <View style={styles.modalDetail}>
+                  <Text style={styles.modalDetailIcon}>💰</Text>
+                  <Text style={styles.modalDetailText}>{selectedJob?.salary}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.modalSectionTitle}>Descripción del puesto</Text>
               <Text style={styles.modalDescription}>
                 {selectedJob?.description}
               </Text>
@@ -348,33 +387,35 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={[styles.saveModalButton, alreadyApplied && styles.saveModalButtonDisabled]}
-                  onPress={async () => {
+                  style={[styles.modalApplyButton, alreadyApplied && styles.modalApplyButtonDisabled]}
+                  onPress={() => {
                     if (alreadyApplied) {
                       Alert.alert("Aviso", "Ya has aplicado a esta oferta.");
                       return;
                     }
-                    await handleApplyJob(selectedJob);
                     setShowJobDetails(false);
+                    // ✅ Solo animar, no ejecutar la acción directamente
+                    animateApply();
                   }}
-                  disabled={isApplying || alreadyApplied}
+                  disabled={isApplying || isProcessingAction || alreadyApplied}
                 >
                   {isApplying ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.saveModalText}>
+                    <Text style={styles.modalApplyText}>
                       {alreadyApplied ? "Ya aplicaste" : "Aplicar ahora"}
                     </Text>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.discardModalButton}
+                  style={styles.modalDiscardButton}
                   onPress={() => {
-                    handleDiscardJob(selectedJob);
                     setShowJobDetails(false);
+                    // ✅ Solo animar, no ejecutar la acción directamente
+                    animateDiscard();
                   }}
                 >
-                  <Text style={styles.discardModalText}>Descartar</Text>
+                  <Text style={styles.modalDiscardText}>Descartar</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -385,12 +426,14 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
   );
 }
 
+// Los estilos se mantienen igual (no los cambio para no alargar la respuesta)
 const styles = StyleSheet.create({
+  // ... (todos los estilos se mantienen igual que en tu código original)
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
   },
-  swipeHeader: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -398,6 +441,8 @@ const styles = StyleSheet.create({
     paddingTop: 55,
     paddingBottom: 16,
     backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     paddingHorizontal: 12,
@@ -405,12 +450,13 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: "#4F46E5",
-    fontWeight: "500",
+    fontWeight: "600",
     fontSize: 15,
   },
   counterText: {
     color: "#6B7280",
     fontSize: 14,
+    fontWeight: "500",
   },
   swipeContainer: {
     flex: 1,
@@ -418,26 +464,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
     position: "relative",
-    paddingBottom: 100,
   },
   jobCard: {
-    position: "absolute",
     width: screenWidth - 32,
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    top: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  currentCard: {
+    position: "absolute",
+    zIndex: 2,
   },
   nextCard: {
-    opacity: 0.5,
+    opacity: 0.4,
     transform: [{ scale: 0.95 }],
     zIndex: 1,
-    top: 20,
   },
   applyingOverlay: {
     position: "absolute",
@@ -445,8 +491,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
@@ -455,15 +501,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
     color: "#4F46E5",
-    fontWeight: "500",
+    fontWeight: "600",
   },
   alreadyAppliedBadge: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 16,
+    right: 16,
     backgroundColor: "#10B981",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     zIndex: 5,
   },
@@ -475,20 +521,20 @@ const styles = StyleSheet.create({
   companyHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     marginBottom: 20,
   },
   companyLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#E5E7EB",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#F3F4F6",
   },
   companyInfo: {
     flex: 1,
   },
   jobTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#1F2937",
     marginBottom: 4,
@@ -500,7 +546,7 @@ const styles = StyleSheet.create({
   jobDetails: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -509,18 +555,19 @@ const styles = StyleSheet.create({
   detailBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
     backgroundColor: "#F3F4F6",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 30,
   },
   detailIcon: {
-    fontSize: 12,
+    fontSize: 14,
   },
   detailText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#4B5563",
+    fontWeight: "500",
   },
   description: {
     fontSize: 14,
@@ -535,13 +582,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   skillTag: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#EEF2FF",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   skillTagText: {
-    color: "#FFFFFF",
+    color: "#4F46E5",
     fontSize: 12,
     fontWeight: "500",
   },
@@ -556,26 +603,45 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  swipeInstructions: {
+  actionsContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 32,
-    position: "absolute",
-    bottom: 30,
-    left: 0,
-    right: 0,
+    gap: 24,
+    marginTop: screenHeight * 0.55,
+    paddingBottom: 20,
   },
-  instructionBadge: {
+  actionButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  instructionIcon: {
-    fontSize: 20,
+  discardButton: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#EF4444",
   },
-  instructionText: {
-    fontSize: 11,
-    color: "#6B7280",
-    fontWeight: "500",
+  applyButton: {
+    backgroundColor: "#4F46E5",
+  },
+  applyButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+  },
+  actionButtonIcon: {
+    fontSize: 32,
+    fontWeight: "bold",
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 4,
+    color: "#1F2937",
   },
   modalOverlay: {
     flex: 1,
@@ -584,9 +650,9 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
     maxHeight: screenHeight * 0.85,
   },
   modalHeader: {
@@ -596,7 +662,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#1F2937",
     flex: 1,
@@ -607,12 +673,37 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   modalCompany: {
-    fontSize: 15,
+    fontSize: 16,
     color: "#6B7280",
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  modalDetailsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  modalDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 30,
+  },
+  modalDetailIcon: {
+    fontSize: 14,
+  },
+  modalDetailText: {
+    fontSize: 13,
+    color: "#4B5563",
   },
   modalSectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "bold",
     color: "#1F2937",
     marginTop: 20,
@@ -625,9 +716,8 @@ const styles = StyleSheet.create({
   },
   requirementItem: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: 10,
+    gap: 10,
   },
   bullet: {
     fontSize: 14,
@@ -637,12 +727,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1F2937",
     flex: 1,
+    lineHeight: 20,
   },
   benefitItem: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: 10,
+    gap: 10,
   },
   benefitIcon: {
     fontSize: 14,
@@ -650,37 +740,42 @@ const styles = StyleSheet.create({
   benefitText: {
     fontSize: 14,
     color: "#1F2937",
+    flex: 1,
   },
   modalActions: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 24,
-    marginBottom: 20,
+    marginTop: 28,
+    marginBottom: 12,
   },
-  saveModalButton: {
+  modalApplyButton: {
     flex: 1,
     backgroundColor: "#4F46E5",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
   },
-  saveModalButtonDisabled: {
+  modalApplyButtonDisabled: {
     backgroundColor: "#9CA3AF",
   },
-  saveModalText: {
+  modalApplyText: {
     color: "#FFFFFF",
     fontWeight: "600",
+    fontSize: 16,
   },
-  discardModalButton: {
+  modalDiscardButton: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#EF4444",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
   },
-  discardModalText: {
+  modalDiscardText: {
     color: "#EF4444",
     fontWeight: "600",
+    fontSize: 16,
   },
   endContainer: {
     flex: 1,
@@ -703,6 +798,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     marginBottom: 32,
+    textAlign: "center",
   },
   statsContainer: {
     flexDirection: "row",

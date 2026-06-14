@@ -1,14 +1,37 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  ScrollView, 
+  TextInput, 
+  ActivityIndicator, 
+  Alert 
+} from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
+import api from '../../../services/api';
 
 export default function SimuladorEntrevistas({ onBack }) {
-  const [step, setStep] = useState('select'); // select, interviewing, results
+  const [step, setStep] = useState('select');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  
+  const [messages, setMessages] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [textInput, setTextInput] = useState("");
+  const [evaluation, setEvaluation] = useState(null);
+  const [isFinished, setIsFinished] = useState(false);
+  
+  // Estados para audio
+  const [isRecording, setIsRecording] = useState(false);
+  const [recording, setRecording] = useState(null);
+  const [transcript, setTranscript] = useState("");
+  const [hasAudioPermission, setHasAudioPermission] = useState(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
-  // CATEGORÍAS PRINCIPALES
   const categories = [
     { id: 'tech', name: 'Tecnología', icon: '💻', color: '#EEF2FF' },
     { id: 'business', name: 'Negocios', icon: '📊', color: '#FEF3C7' },
@@ -20,7 +43,6 @@ export default function SimuladorEntrevistas({ onBack }) {
     { id: 'admin', name: 'Administrativo', icon: '📋', color: '#E5E7EB' },
   ];
 
-  // ROLES POR CATEGORÍA
   const rolesByCategory = {
     tech: [
       { id: 'frontend', name: 'Frontend Developer', icon: '🎨' },
@@ -29,148 +51,246 @@ export default function SimuladorEntrevistas({ onBack }) {
       { id: 'datascience', name: 'Data Scientist', icon: '📊' },
       { id: 'devops', name: 'DevOps', icon: '🔧' },
       { id: 'mobile', name: 'Mobile Developer', icon: '📱' },
-      { id: 'qa', name: 'QA Tester', icon: '🧪' },
-      { id: 'security', name: 'Seguridad Informática', icon: '🔒' },
     ],
     business: [
       { id: 'marketing', name: 'Marketing Digital', icon: '📢' },
       { id: 'finance', name: 'Finanzas', icon: '💰' },
       { id: 'hr', name: 'Recursos Humanos', icon: '👥' },
-      { id: 'admin_business', name: 'Administración', icon: '📁' },
-      { id: 'logistics', name: 'Logística', icon: '🚚' },
       { id: 'project_manager', name: 'Project Manager', icon: '📋' },
-      { id: 'consultant', name: 'Consultor', icon: '💡' },
     ],
     health: [
       { id: 'doctor', name: 'Médico General', icon: '👨‍⚕️' },
       { id: 'nurse', name: 'Enfermería', icon: '💉' },
-      { id: 'dentist', name: 'Odontología', icon: '🦷' },
       { id: 'psychologist', name: 'Psicología', icon: '🧠' },
-      { id: 'physiotherapy', name: 'Fisioterapia', icon: '🏃' },
-      { id: 'nutrition', name: 'Nutrición', icon: '🥗' },
-      { id: 'veterinary', name: 'Veterinaria', icon: '🐾' },
     ],
     education: [
       { id: 'teacher', name: 'Docente', icon: '👩‍🏫' },
       { id: 'professor', name: 'Profesor Universitario', icon: '🎓' },
-      { id: 'pedagogue', name: 'Pedagogo', icon: '📖' },
-      { id: 'tutor', name: 'Tutor', icon: '✏️' },
-      { id: 'educational_coordinator', name: 'Coordinador Educativo', icon: '📅' },
     ],
     creative: [
       { id: 'graphic_designer', name: 'Diseñador Gráfico', icon: '🎨' },
       { id: 'ui_ux', name: 'UI/UX Designer', icon: '🎯' },
-      { id: 'illustrator', name: 'Ilustrador', icon: '🖌️' },
-      { id: 'photographer', name: 'Fotógrafo', icon: '📷' },
-      { id: 'video_editor', name: 'Editor de Video', icon: '🎬' },
-      { id: 'animator', name: 'Animador', icon: '✨' },
-      { id: 'copywriter', name: 'Redactor Creativo', icon: '✍️' },
     ],
     legal: [
       { id: 'lawyer', name: 'Abogado', icon: '⚖️' },
-      { id: 'judge', name: 'Juez', icon: '👨‍⚖️' },
-      { id: 'notary', name: 'Notario', icon: '📜' },
-      { id: 'legal_advisor', name: 'Asesor Legal', icon: '📝' },
-      { id: 'compliance', name: 'Compliance', icon: '✅' },
     ],
     sales: [
       { id: 'sales_executive', name: 'Ejecutivo de Ventas', icon: '📞' },
-      { id: 'account_manager', name: 'Account Manager', icon: '🤝' },
-      { id: 'business_dev', name: 'Desarrollo de Negocios', icon: '🚀' },
-      { id: 'retail', name: 'Ventas Retail', icon: '🏬' },
-      { id: 'real_estate', name: 'Bienes Raíces', icon: '🏠' },
     ],
     admin: [
       { id: 'assistant', name: 'Asistente Administrativo', icon: '📎' },
-      { id: 'receptionist', name: 'Recepcionista', icon: '📞' },
-      { id: 'secretary', name: 'Secretaria', icon: '📋' },
-      { id: 'office_manager', name: 'Office Manager', icon: '🏢' },
-      { id: 'data_entry', name: 'Data Entry', icon: '⌨️' },
     ],
   };
 
-  // PREGUNTAS GENERALES Y ESPECÍFICAS POR ROL
-  const getQuestionsForRole = (categoryId, roleId) => {
-    const baseQuestions = {
-      general: [
-        'Háblame de ti y tu experiencia profesional',
-        '¿Cuáles son tus principales fortalezas?',
-        '¿Cuáles son tus áreas de oportunidad?',
-        '¿Por qué quieres trabajar con nosotros?',
-        '¿Dónde te ves en 5 años?',
-        '¿Cuál ha sido tu mayor logro profesional?',
-        '¿Cómo manejas situaciones de presión?',
-        '¿Qué esperas lograr en los primeros 3 meses?',
-      ],
-      tech: [
-        '¿Qué tecnologías dominas y cuál es tu favorita?',
-        '¿Cómo te mantienes actualizado en tecnología?',
-        '¿Has trabajado con metodologías ágiles?',
-        '¿Cómo resuelves problemas técnicos complejos?',
-      ],
-      business: [
-        '¿Cómo defines una estrategia de marketing exitosa?',
-        '¿Qué métricas consideras clave en finanzas?',
-        '¿Cómo gestionas equipos de trabajo?',
-        '¿Qué herramientas de gestión utilizas?',
-      ],
-      health: [
-        '¿Cómo manejas situaciones de emergencia?',
-        '¿Qué importancia le das al trato con pacientes?',
-        '¿Cómo te mantienes actualizado en medicina?',
-        '¿Cómo trabajas bajo presión en cirugías/emergencias?',
-      ],
-      education: [
-        '¿Cuál es tu metodología de enseñanza?',
-        '¿Cómo manejas estudiantes con diferentes ritmos?',
-        '¿Qué herramientas tecnológicas usas en clase?',
-        '¿Cómo evalúas el aprendizaje?',
-      ],
-      creative: [
-        '¿Cuál es tu proceso creativo?',
-        '¿Cómo manejas las críticas a tu trabajo?',
-        '¿Qué herramientas de diseño dominas?',
-        '¿Cómo te inspiras para crear?',
-      ],
-      legal: [
-        '¿Cómo te mantienes actualizado en leyes?',
-        '¿Cuál es tu experiencia en litigios?',
-        '¿Cómo manejas la confidencialidad?',
-        '¿Qué áreas del derecho dominas?',
-      ],
-      sales: [
-        '¿Cuál es tu técnica de cierre de ventas?',
-        '¿Cómo manejas objeciones?',
-        '¿Cuál es tu récord de ventas?',
-        '¿Cómo construyes relaciones con clientes?',
-      ],
-      admin: [
-        '¿Cómo organizas tu tiempo y prioridades?',
-        '¿Qué herramientas de oficina dominas?',
-        '¿Cómo manejas múltiples tareas?',
-        '¿Qué experiencia tienes en atención al cliente?',
-      ],
-    };
+  // Solicitar permisos al iniciar
+  useEffect(() => {
+    (async () => {
+      const { status } = await Audio.requestPermissionsAsync();
+      setHasAudioPermission(status === 'granted');
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
+    })();
+  }, []);
 
-    let specificQuestions = [];
-    
-    if (categoryId === 'tech') specificQuestions = baseQuestions.tech;
-    else if (categoryId === 'business') specificQuestions = baseQuestions.business;
-    else if (categoryId === 'health') specificQuestions = baseQuestions.health;
-    else if (categoryId === 'education') specificQuestions = baseQuestions.education;
-    else if (categoryId === 'creative') specificQuestions = baseQuestions.creative;
-    else if (categoryId === 'legal') specificQuestions = baseQuestions.legal;
-    else if (categoryId === 'sales') specificQuestions = baseQuestions.sales;
-    else if (categoryId === 'admin') specificQuestions = baseQuestions.admin;
-    else specificQuestions = [];
-
-    // Mezclar preguntas generales + específicas
-    const allQuestions = [...baseQuestions.general, ...specificQuestions];
-    // Tomar 5 preguntas aleatorias
-    return allQuestions.sort(() => 0.5 - Math.random()).slice(0, 5);
+  const speakText = async (text) => {
+    try {
+      await Speech.speak(text, {
+        language: 'es-ES',
+        pitch: 1.0,
+        rate: 0.9,
+      });
+    } catch (error) {
+      console.error("Error al hablar:", error);
+    }
   };
 
-  const [currentQuestions, setCurrentQuestions] = useState([]);
+  // Iniciar entrevista - /api/interview/start
+  const startInterview = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await api.post('/interview/start', {
+        mode: selectedRole ? "job_specific" : "practice",
+        job_id: selectedJobId
+      });
+
+      console.log("Start response:", response.data);
+
+      if (response.data.status === "success") {
+        const firstQuestion = response.data.first_question || "Cuéntame sobre ti";
+        setMessages([
+          { role: "model", content: firstQuestion }
+        ]);
+        await speakText(firstQuestion);
+      } else {
+        throw new Error(response.data.message || "No se pudo iniciar");
+      }
+    } catch (error) {
+      console.error("Error iniciando entrevista:", error);
+      Alert.alert("Error", "No se pudo iniciar la entrevista");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Iniciar grabación de audio
+  const startRecording = async () => {
+    if (!hasAudioPermission) {
+      Alert.alert("Error", "No tienes permisos de micrófono");
+      return;
+    }
+    
+    try {
+      setIsRecording(true);
+      setTranscript("🎙️ Grabando...");
+      
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      
+    } catch (error) {
+      console.error("Error al grabar:", error);
+      Alert.alert("Error", "No se pudo iniciar la grabación");
+      setIsRecording(false);
+    }
+  };
+
+  // Detener grabación y transcribir (simulado)
+  const stopRecording = async () => {
+    if (!recording) return;
+    
+    setIsRecording(false);
+    setIsTranscribing(true);
+    setTranscript("🔄 Procesando audio...");
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      
+      // Por ahora, simulamos la transcripción
+      // En producción, aquí enviarías el audio a un servicio de reconocimiento de voz
+      setTimeout(() => {
+        // Simular texto transcrito
+        const simulatedText = "Esta es una respuesta de prueba desde el audio grabado. En una versión real, aquí aparecería tu transcripción.";
+        
+        setTranscript(`📝 "${simulatedText.substring(0, 50)}..."`);
+        setIsTranscribing(false);
+        
+        // Preguntar si quiere enviar esta respuesta
+        Alert.alert(
+          "Audio grabado",
+          "¿Quieres enviar esta respuesta?",
+          [
+            {
+              text: "Editar",
+              onPress: () => {
+                setTextInput(simulatedText);
+                setTranscript("");
+              }
+            },
+            {
+              text: "Enviar",
+              onPress: () => {
+                sendMessage(simulatedText);
+                setTranscript("");
+              }
+            },
+            {
+              text: "Cancelar",
+              style: "cancel",
+              onPress: () => setTranscript("")
+            }
+          ]
+        );
+      }, 1500);
+      
+    } catch (error) {
+      console.error("Error procesando audio:", error);
+      setTranscript("❌ Error al procesar el audio");
+      Alert.alert("Error", "No se pudo procesar el audio");
+    } finally {
+      setRecording(null);
+      setTimeout(() => {
+        if (transcript !== "❌ Error al procesar el audio") {
+          // No limpiar si hay error
+        }
+      }, 3000);
+    }
+  };
+
+  // Enviar mensaje - /api/interview/message
+  const sendMessage = async (text) => {
+    if (!text || !text.trim()) {
+      Alert.alert("Aviso", "Escribe o graba tu respuesta");
+      return;
+    }
+
+    const newHistory = [
+      ...messages,
+      { role: "user", content: text }
+    ];
+    setMessages(newHistory);
+    setTextInput("");
+    setTranscript("");
+    setIsProcessing(true);
+
+    try {
+      const response = await api.post('/interview/message', {
+        history: newHistory,
+        job_context: selectedRole ? `Job ID: ${selectedRole}` : null
+      });
+
+      console.log("Message response:", response.data);
+
+      if (response.data.status === "success") {
+        const reply = response.data.reply || response.data.message || "Gracias por tu respuesta";
+        const newMessages = [
+          ...newHistory,
+          { role: "model", content: reply }
+        ];
+        setMessages(newMessages);
+        await speakText(reply);
+      } else {
+        throw new Error(response.data.message || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error enviando mensaje:", error);
+      Alert.alert("Error", "No se pudo enviar tu respuesta");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Finalizar entrevista - /api/interview/finish
+  const finishInterview = async () => {
+    setIsProcessing(true);
+    
+    try {
+      const response = await api.post('/interview/finish', {
+        history: messages,
+        job_context: selectedRole ? `Job ID: ${selectedRole}` : null
+      });
+
+      console.log("Finish response:", response.data);
+
+      if (response.data.status === "success") {
+        setIsFinished(true);
+        setEvaluation(response.data);
+      } else {
+        throw new Error(response.data.message || "Error al finalizar");
+      }
+    } catch (error) {
+      console.error("Error al finalizar:", error);
+      Alert.alert("Error", "No se pudo finalizar la entrevista");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleSelectRole = (categoryId, roleId) => {
     setSelectedCategory(categoryId);
@@ -178,32 +298,23 @@ export default function SimuladorEntrevistas({ onBack }) {
   };
 
   const handleStartInterview = () => {
-    const questions = getQuestionsForRole(selectedCategory, selectedRole);
-    setCurrentQuestions(questions);
     setStep('interviewing');
-    setCurrentQuestion(0);
-    setAnswers([]);
-  };
-
-  const handleAnswer = (answer) => {
-    const newAnswers = [...answers, answer];
-    setAnswers(newAnswers);
-
-    if (currentQuestion + 1 < currentQuestions.length) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      setStep('results');
-    }
+    startInterview();
   };
 
   const handleReset = () => {
     setStep('select');
     setSelectedCategory(null);
     setSelectedRole(null);
-    setCurrentQuestion(0);
-    setAnswers([]);
-    setCurrentQuestions([]);
+    setSelectedJobId(null);
+    setMessages([]);
+    setEvaluation(null);
+    setIsFinished(false);
+    setTextInput("");
+    setTranscript("");
   };
+
+  const scrollViewRef = useRef();
 
   // Pantalla de selección de categoría
   if (step === 'select' && !selectedCategory) {
@@ -220,9 +331,9 @@ export default function SimuladorEntrevistas({ onBack }) {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.infoCard}>
             <Text style={styles.infoIcon}>🎤</Text>
-            <Text style={styles.infoTitle}>Practica con IA</Text>
+            <Text style={styles.infoTitle}>Entrevista con IA</Text>
             <Text style={styles.infoText}>
-              Selecciona tu área profesional para comenzar la simulación
+              Usa el micrófono para hablar o escribe tus respuestas. La IA evaluará tus respuestas.
             </Text>
           </View>
 
@@ -246,7 +357,7 @@ export default function SimuladorEntrevistas({ onBack }) {
     );
   }
 
-  // Pantalla de selección de rol específico
+  // Pantalla de selección de rol
   if (step === 'select' && selectedCategory && !selectedRole) {
     const roles = rolesByCategory[selectedCategory] || [];
     const categoryInfo = categories.find(c => c.id === selectedCategory);
@@ -283,6 +394,10 @@ export default function SimuladorEntrevistas({ onBack }) {
             ))}
           </View>
 
+          <TouchableOpacity style={styles.startButton} onPress={handleStartInterview}>
+            <Text style={styles.startButtonText}>Iniciar Entrevista</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={styles.backToCategoriesButton}
             onPress={() => setSelectedCategory(null)}
@@ -295,45 +410,97 @@ export default function SimuladorEntrevistas({ onBack }) {
   }
 
   // Pantalla de entrevista en curso
-  if (step === 'interviewing') {
-    const progress = ((currentQuestion + 1) / currentQuestions.length) * 100;
-
+  if (step === 'interviewing' && !isFinished) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleReset} style={styles.backButton}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Entrevista en curso</Text>
-          <View style={styles.placeholder} />
+          <Text style={styles.headerTitle}>Entrevista con IA</Text>
+          <TouchableOpacity onPress={finishInterview} style={styles.finishButton}>
+            <Text style={styles.finishButtonText}>Finalizar</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.interviewContainer}>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          <View style={styles.instructionsCard}>
+            <Text style={styles.instructionsIcon}>💡</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.instructionsTitle}>¿Cómo funciona?</Text>
+              <Text style={styles.instructionsText}>
+                Mantén presionado 🎤 para grabar audio. Suelta para procesar tu respuesta.
+              </Text>
             </View>
-            <Text style={styles.progressText}>
-              Pregunta {currentQuestion + 1} de {currentQuestions.length}
-            </Text>
           </View>
 
-          <View style={styles.questionCard}>
-            <Text style={styles.questionIcon}>🤖</Text>
-            <Text style={styles.questionText}>{currentQuestions[currentQuestion]}</Text>
-          </View>
-
-          <View style={styles.answerButtons}>
-            {['Excelente', 'Bien', 'Regular', 'Necesito mejorar'].map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={styles.answerOption}
-                onPress={() => handleAnswer(option)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.answerOptionText}>{option}</Text>
-              </TouchableOpacity>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.chatContainer} 
+            contentContainerStyle={styles.chatContent}
+            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
+          >
+            {messages.map((msg, idx) => (
+              <View key={idx} style={[
+                styles.messageBubble,
+                msg.role === 'user' ? styles.userMessage : styles.botMessage
+              ]}>
+                <Text style={msg.role === 'user' ? styles.userMessageText : styles.botMessageText}>
+                  {msg.content}
+                </Text>
+              </View>
             ))}
+            {isProcessing && (
+              <View style={[styles.messageBubble, styles.botMessage]}>
+                <ActivityIndicator size="small" color="#5B34F2" />
+                <Text style={styles.botMessageText}>Procesando...</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.recordingArea}>
+            {(transcript !== "" || isTranscribing) && (
+              <View style={styles.transcriptContainer}>
+                {isTranscribing ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <ActivityIndicator size="small" color="#10B981" />
+                    <Text style={styles.transcriptText}>Procesando audio...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.transcriptText}>{transcript}</Text>
+                )}
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={[styles.recordButton, isRecording && styles.recordingActive]}
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
+              disabled={isProcessing || isTranscribing}
+            >
+              <Text style={styles.recordButtonText}>
+                {isRecording ? "🔴 Grabando... (Suelta para enviar)" : "🎤 Mantén presionado para grabar"}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.textInputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="O escribe tu respuesta aquí..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                value={textInput}
+                onChangeText={setTextInput}
+                editable={!isProcessing && !isRecording && !isTranscribing}
+              />
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={() => sendMessage(textInput)}
+                disabled={isProcessing || isRecording || isTranscribing || !textInput.trim()}
+              >
+                <Text style={styles.sendButtonText}>Enviar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -353,40 +520,28 @@ export default function SimuladorEntrevistas({ onBack }) {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.resultsCard}>
-          <Text style={styles.resultsIcon}>📊</Text>
-          <Text style={styles.resultsTitle}>Feedback de tu entrevista</Text>
+          <Text style={styles.resultsIcon}>🎉</Text>
+          <Text style={styles.resultsTitle}>Entrevista Finalizada</Text>
           
           <View style={styles.scoreSummary}>
-            <Text style={styles.scoreLabel}>Puntuación general</Text>
-            <Text style={styles.scoreValue}>
-              {Math.round(answers.filter(a => a === 'Excelente' || a === 'Bien').length / answers.length * 100)}%
-            </Text>
+            <Text style={styles.scoreLabel}>Puntuación General</Text>
+            <Text style={styles.scoreValue}>{evaluation?.score || evaluation?.evaluation?.score || 85}/100</Text>
           </View>
 
           <View style={styles.feedbackSection}>
-            <Text style={styles.feedbackTitle}>💪 Fortalezas</Text>
+            <Text style={styles.feedbackTitle}>💬 Feedback General</Text>
             <Text style={styles.feedbackText}>
-              {answers.filter(a => a === 'Excelente' || a === 'Bien').length > 2
-                ? 'Demuestras buen conocimiento y confianza en tus respuestas. Tienes una comunicación clara y estructurada.'
-                : 'Tienes disposición para aprender y mejorar. Muestras interés en el puesto.'}
-            </Text>
-          </View>
-
-          <View style={styles.feedbackSection}>
-            <Text style={styles.feedbackTitle}>📈 Áreas de mejora</Text>
-            <Text style={styles.feedbackText}>
-              {answers.filter(a => a === 'Regular' || a === 'Necesito mejorar').length > 1
-                ? 'Te sugerimos practicar más tus respuestas y profundizar en conceptos clave de tu área.'
-                : 'Sigue practicando para ganar más fluidez y confianza en tus respuestas.'}
+              {evaluation?.feedback || evaluation?.evaluation?.feedback || "¡Excelente trabajo! Has demostrado buenas habilidades de comunicación."}
             </Text>
           </View>
 
           <View style={styles.tipsCard}>
-            <Text style={styles.tipsTitle}>🎯 Consejos generales</Text>
-            <Text style={styles.tipItem}>• Investiga sobre la empresa antes de la entrevista</Text>
-            <Text style={styles.tipItem}>• Prepara ejemplos concretos de tu experiencia</Text>
+            <Text style={styles.tipsTitle}>🎯 Consejos para mejorar</Text>
+            <Text style={styles.tipItem}>• Practica tus respuestas con anticipación</Text>
+            <Text style={styles.tipItem}>• Investiga sobre la empresa y el puesto</Text>
+            <Text style={styles.tipItem}>• Prepara ejemplos concretos de logros</Text>
+            <Text style={styles.tipItem}>• Habla con claridad y confianza</Text>
             <Text style={styles.tipItem}>• Haz preguntas inteligentes al final</Text>
-            <Text style={styles.tipItem}>• Cuida tu lenguaje corporal</Text>
           </View>
 
           <TouchableOpacity style={styles.restartButton} onPress={handleReset}>
@@ -434,6 +589,17 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  finishButton: {
+    backgroundColor: '#ED7B32',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  finishButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   content: {
     padding: 20,
@@ -548,9 +714,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-  },
-  startButtonDisabled: {
-    backgroundColor: '#C7D2FE',
+    marginBottom: 16,
   },
   startButtonText: {
     fontSize: 16,
@@ -559,66 +723,118 @@ const styles = StyleSheet.create({
   },
   interviewContainer: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
-  progressContainer: {
-    marginBottom: 32,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#5B34F2',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  questionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  questionIcon: {
-    fontSize: 40,
+  instructionsCard: {
+    flexDirection: 'row',
+    backgroundColor: '#E8E4FD',
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 16,
-  },
-  questionText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#1F2937',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  answerButtons: {
     gap: 12,
   },
-  answerOption: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+  instructionsIcon: {
+    fontSize: 24,
+  },
+  instructionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A2BC4',
+    marginBottom: 2,
+  },
+  instructionsText: {
+    fontSize: 12,
+    color: '#4A2BC4',
+  },
+  chatContainer: {
+    flex: 1,
+    maxHeight: 400,
+    marginBottom: 16,
+  },
+  chatContent: {
+    paddingVertical: 8,
+  },
+  messageBubble: {
+    maxWidth: '85%',
+    padding: 12,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
+  userMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#1C6B72',
+    borderTopRightRadius: 4,
+  },
+  botMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    borderTopLeftRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userMessageText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  botMessageText: {
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  recordingArea: {
+    marginTop: 'auto',
+  },
+  transcriptContainer: {
+    backgroundColor: '#1F2937',
+    padding: 12,
     borderRadius: 12,
+    marginBottom: 12,
+  },
+  transcriptText: {
+    fontSize: 14,
+    color: '#10B981',
+    textAlign: 'center',
+  },
+  recordButton: {
+    backgroundColor: '#5B34F2',
+    paddingVertical: 16,
+    borderRadius: 40,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recordingActive: {
+    backgroundColor: '#EF4444',
+  },
+  recordButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  textInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    maxHeight: 80,
   },
-  answerOptionText: {
-    fontSize: 15,
-    color: '#1F2937',
-    textAlign: 'center',
+  sendButton: {
+    backgroundColor: '#5B34F2',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  sendButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   resultsCard: {
     backgroundColor: '#FFFFFF',

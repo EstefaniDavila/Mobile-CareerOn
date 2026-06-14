@@ -121,8 +121,7 @@ const studentService = {
       const response = await api.post(`/student/jobs/${jobId}/apply`);
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error en applyToJob:', error);
-      console.log('Detalle del error:', error.response?.data);
+      
       
       let errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message;
       
