@@ -114,16 +114,29 @@ const studentService = {
     }
   },
 
-  // Aplicar a un trabajo
+  // Aplicar a un trabajo - CORREGIDO (sin body, solo job_id en URL)
   applyToJob: async (jobId) => {
     try {
+      // El backend solo necesita job_id en la URL, no enviamos body
       const response = await api.post(`/student/jobs/${jobId}/apply`);
       return { success: true, data: response.data };
     } catch (error) {
       console.error('Error en applyToJob:', error);
+      console.log('Detalle del error:', error.response?.data);
+      
+      let errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message;
+      
+      // Manejar errores específicos
+      if (errorMessage.includes("Ya has postulado")) {
+        errorMessage = "Ya has aplicado a esta oferta anteriormente.";
+      } else if (errorMessage.includes("Usuario no encontrado")) {
+        errorMessage = "Usuario no encontrado. Inicia sesión nuevamente.";
+      }
+      
       return { 
         success: false, 
-        error: error.response?.data?.message || error.message 
+        error: errorMessage,
+        details: error.response?.data
       };
     }
   },

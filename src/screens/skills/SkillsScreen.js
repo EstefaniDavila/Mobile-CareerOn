@@ -1,91 +1,356 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Image, TextInput } from 'react-native';
-import { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Image, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
 
 export default function SkillsScreen() {
   const [selectedRoadmap, setSelectedRoadmap] = useState(null);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showSkillAlert, setShowSkillAlert] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userSkills, setUserSkills] = useState({});
+  const [userRejectedSkills, setUserRejectedSkills] = useState([]);
 
-  const [userSkills, setUserSkills] = useState({
-    "Excel": { level: 80, completed: true, date: "2024-01-10" },
-    "SQL": { level: 65, completed: true, date: "2024-01-15" },
-    "Python": { level: 40, completed: false },
-    "Power BI": { level: 20, completed: false },
-    "Tableau": { level: 0, completed: false },
-  });
+  // CATEGORÍAS DE CARRERA (TODAS LAS CARRERAS)
+  const careerCategories = {
+    technology: { name: "Tecnología", icon: "💻", color: "#5B34F2" },
+    business: { name: "Negocios", icon: "📊", color: "#0F6C7A" },
+    health: { name: "Salud", icon: "🏥", color: "#10B981" },
+    education: { name: "Educación", icon: "📚", color: "#F59E0B" },
+    creative: { name: "Creativo", icon: "🎨", color: "#EC4899" },
+    legal: { name: "Legal", icon: "⚖️", color: "#6366F1" },
+    sales: { name: "Ventas", icon: "📈", color: "#F97316" },
+    admin: { name: "Administrativo", icon: "📋", color: "#6B7280" },
+  };
 
+  // ROADMAPS POR CATEGORÍA Y ROL
   const roadmaps = {
-    "Data Analyst": {
-      title: "Data Analyst",
-      icon: "📊",
-      description: "Conviértete en Analista de Datos desde cero",
-      totalJobs: 1243,
-      avgSalary: "$2,200 - $3,500",
-      color: "#0F6C7A",
-      nodes: [
-        { id: 1, name: "Excel", level: "Básico a Intermedio", demand: "+45%", demandPercent: 85, duration: "40 horas", courses: [
-          { name: "Excel desde Cero", platform: "CarrerOn", price: "Gratis", rating: 4.8 },
-          { name: "Excel Avanzado para Datos", platform: "Coursera", price: "$49", rating: 4.9 },
-        ]},
-        { id: 2, name: "SQL", level: "Intermedio", demand: "+65%", demandPercent: 92, duration: "50 horas", courses: [
-          { name: "SQL para Análisis de Datos", platform: "CarrerOn", price: "Gratis", rating: 4.9 },
-        ]},
-        { id: 3, name: "Python", level: "Intermedio", demand: "+78%", demandPercent: 95, duration: "80 horas", courses: [] },
-        { id: 4, name: "Power BI", level: "Intermedio", demand: "+52%", demandPercent: 88, duration: "30 horas", courses: [] },
-        { id: 5, name: "Tableau", level: "Básico", demand: "+38%", demandPercent: 70, duration: "25 horas", courses: [] },
-      ]
-    },
-    "Frontend Dev": {
+    // Tecnología
+    "Frontend Developer": {
       title: "Frontend Developer",
       icon: "💻",
+      category: "technology",
       description: "Especialízate en desarrollo web frontend",
       totalJobs: 2341,
       avgSalary: "$2,500 - $4,200",
       color: "#5B34F2",
-      nodes: [
-        { id: 1, name: "HTML/CSS", level: "Básico", demand: "+55%", demandPercent: 90, duration: "30 horas", courses: [] },
-        { id: 2, name: "JavaScript", level: "Intermedio", demand: "+72%", demandPercent: 96, duration: "60 horas", courses: [] },
-        { id: 3, name: "React", level: "Avanzado", demand: "+85%", demandPercent: 98, duration: "80 horas", courses: [] },
-        { id: 4, name: "TypeScript", level: "Intermedio", demand: "+68%", demandPercent: 85, duration: "40 horas", courses: [] },
-        { id: 5, name: "Next.js", level: "Intermedio", demand: "+62%", demandPercent: 82, duration: "50 horas", courses: [] },
+      skills: [
+        { id: 1, name: "HTML/CSS", level: "Básico a Intermedio", demand: "+55%", demandPercent: 90, duration: "30 horas", category: "technology" },
+        { id: 2, name: "JavaScript", level: "Intermedio", demand: "+72%", demandPercent: 96, duration: "60 horas", category: "technology" },
+        { id: 3, name: "React", level: "Avanzado", demand: "+85%", demandPercent: 98, duration: "80 horas", category: "technology" },
+        { id: 4, name: "TypeScript", level: "Intermedio", demand: "+68%", demandPercent: 85, duration: "40 horas", category: "technology" },
+        { id: 5, name: "Next.js", level: "Intermedio", demand: "+62%", demandPercent: 82, duration: "50 horas", category: "technology" },
       ]
     },
-    "DevOps": {
-      title: "DevOps Engineer",
-      icon: "⚙️",
-      description: "Automatización y cloud computing",
-      totalJobs: 876,
-      avgSalary: "$3,500 - $5,500",
-      color: "#F59E0B",
-      nodes: [
-        { id: 1, name: "Linux", level: "Intermedio", demand: "+58%", demandPercent: 85, duration: "40 horas", courses: [] },
-        { id: 2, name: "Docker", level: "Intermedio", demand: "+75%", demandPercent: 94, duration: "35 horas", courses: [] },
-        { id: 3, name: "Kubernetes", level: "Avanzado", demand: "+82%", demandPercent: 96, duration: "60 horas", courses: [] },
-        { id: 4, name: "CI/CD", level: "Intermedio", demand: "+70%", demandPercent: 90, duration: "30 horas", courses: [] },
-        { id: 5, name: "AWS", level: "Avanzado", demand: "+80%", demandPercent: 95, duration: "70 horas", courses: [] },
+    "Data Analyst": {
+      title: "Data Analyst",
+      icon: "📊",
+      category: "technology",
+      description: "Conviértete en Analista de Datos",
+      totalJobs: 1243,
+      avgSalary: "$2,200 - $3,500",
+      color: "#0F6C7A",
+      skills: [
+        { id: 1, name: "Excel", level: "Básico a Intermedio", demand: "+45%", demandPercent: 85, duration: "40 horas", category: "technology" },
+        { id: 2, name: "SQL", level: "Intermedio", demand: "+65%", demandPercent: 92, duration: "50 horas", category: "technology" },
+        { id: 3, name: "Python", level: "Intermedio", demand: "+78%", demandPercent: 95, duration: "80 horas", category: "technology" },
+        { id: 4, name: "Power BI", level: "Intermedio", demand: "+52%", demandPercent: 88, duration: "30 horas", category: "technology" },
+        { id: 5, name: "Tableau", level: "Básico", demand: "+38%", demandPercent: 70, duration: "25 horas", category: "technology" },
       ]
+    },
+    // Negocios
+    "Marketing Digital": {
+      title: "Marketing Digital",
+      icon: "📢",
+      category: "business",
+      description: "Especialízate en marketing online",
+      totalJobs: 1876,
+      avgSalary: "$1,800 - $3,200",
+      color: "#0F6C7A",
+      skills: [
+        { id: 1, name: "SEO/SEM", level: "Intermedio", demand: "+68%", demandPercent: 88, duration: "40 horas", category: "business" },
+        { id: 2, name: "Google Analytics", level: "Intermedio", demand: "+72%", demandPercent: 90, duration: "35 horas", category: "business" },
+        { id: 3, name: "Social Media Ads", level: "Intermedio", demand: "+75%", demandPercent: 92, duration: "30 horas", category: "business" },
+        { id: 4, name: "Email Marketing", level: "Básico", demand: "+45%", demandPercent: 75, duration: "20 horas", category: "business" },
+        { id: 5, name: "Content Strategy", level: "Intermedio", demand: "+58%", demandPercent: 82, duration: "35 horas", category: "business" },
+      ]
+    },
+    "Finanzas": {
+      title: "Finanzas",
+      icon: "💰",
+      category: "business",
+      description: "Gestión financiera y análisis",
+      totalJobs: 945,
+      avgSalary: "$2,500 - $4,500",
+      color: "#10B981",
+      skills: [
+        { id: 1, name: "Contabilidad", level: "Intermedio", demand: "+55%", demandPercent: 85, duration: "50 horas", category: "business" },
+        { id: 2, name: "Análisis Financiero", level: "Intermedio", demand: "+68%", demandPercent: 88, duration: "45 horas", category: "business" },
+        { id: 3, name: "Excel Avanzado", level: "Avanzado", demand: "+72%", demandPercent: 92, duration: "40 horas", category: "business" },
+        { id: 4, name: "Power BI", level: "Intermedio", demand: "+58%", demandPercent: 80, duration: "30 horas", category: "business" },
+        { id: 5, name: "Gestión de Riesgos", level: "Básico", demand: "+45%", demandPercent: 70, duration: "35 horas", category: "business" },
+      ]
+    },
+    // Salud
+    "Enfermería": {
+      title: "Enfermería",
+      icon: "💉",
+      category: "health",
+      description: "Especialización en cuidados de enfermería",
+      totalJobs: 3245,
+      avgSalary: "$1,500 - $2,800",
+      color: "#10B981",
+      skills: [
+        { id: 1, name: "Cuidados Básicos", level: "Intermedio", demand: "+85%", demandPercent: 95, duration: "60 horas", category: "health" },
+        { id: 2, name: "Farmacología", level: "Intermedio", demand: "+72%", demandPercent: 88, duration: "50 horas", category: "health" },
+        { id: 3, name: "Primeros Auxilios", level: "Básico", demand: "+90%", demandPercent: 96, duration: "30 horas", category: "health" },
+        { id: 4, name: "Gestión de Pacientes", level: "Intermedio", demand: "+65%", demandPercent: 82, duration: "40 horas", category: "health" },
+      ]
+    },
+    // Educación
+    "Docencia": {
+      title: "Docencia",
+      icon: "👩‍🏫",
+      category: "education",
+      description: "Preparación para la enseñanza",
+      totalJobs: 2156,
+      avgSalary: "$1,200 - $2,500",
+      color: "#F59E0B",
+      skills: [
+        { id: 1, name: "Planificación Educativa", level: "Intermedio", demand: "+68%", demandPercent: 85, duration: "40 horas", category: "education" },
+        { id: 2, name: "Psicología Educativa", level: "Básico", demand: "+55%", demandPercent: 78, duration: "35 horas", category: "education" },
+        { id: 3, name: "Tecnología Educativa", level: "Intermedio", demand: "+72%", demandPercent: 88, duration: "30 horas", category: "education" },
+        { id: 4, name: "Evaluación del Aprendizaje", level: "Intermedio", demand: "+60%", demandPercent: 80, duration: "25 horas", category: "education" },
+      ]
+    },
+    // Creativo
+    "Diseño Gráfico": {
+      title: "Diseño Gráfico",
+      icon: "🎨",
+      category: "creative",
+      description: "Diseño visual y creativo",
+      totalJobs: 1432,
+      avgSalary: "$1,600 - $3,000",
+      color: "#EC4899",
+      skills: [
+        { id: 1, name: "Photoshop", level: "Intermedio", demand: "+78%", demandPercent: 92, duration: "50 horas", category: "creative" },
+        { id: 2, name: "Illustrator", level: "Intermedio", demand: "+72%", demandPercent: 88, duration: "45 horas", category: "creative" },
+        { id: 3, name: "Diseño UI/UX", level: "Básico", demand: "+82%", demandPercent: 90, duration: "40 horas", category: "creative" },
+        { id: 4, name: "Figma", level: "Intermedio", demand: "+75%", demandPercent: 86, duration: "30 horas", category: "creative" },
+      ]
+    },
+    // Legal
+    "Derecho Corporativo": {
+      title: "Derecho Corporativo",
+      icon: "⚖️",
+      category: "legal",
+      description: "Asesoría legal empresarial",
+      totalJobs: 876,
+      avgSalary: "$3,000 - $6,000",
+      color: "#6366F1",
+      skills: [
+        { id: 1, name: "Derecho Contractual", level: "Avanzado", demand: "+68%", demandPercent: 88, duration: "60 horas", category: "legal" },
+        { id: 2, name: "Propiedad Intelectual", level: "Intermedio", demand: "+55%", demandPercent: 78, duration: "40 horas", category: "legal" },
+        { id: 3, name: "Cumplimiento Normativo", level: "Intermedio", demand: "+62%", demandPercent: 82, duration: "45 horas", category: "legal" },
+      ]
+    },
+    // Ventas
+    "Ventas B2B": {
+      title: "Ventas B2B",
+      icon: "📈",
+      category: "sales",
+      description: "Ventas empresariales",
+      totalJobs: 1987,
+      avgSalary: "$2,000 - $5,000",
+      color: "#F97316",
+      skills: [
+        { id: 1, name: "Negociación", level: "Avanzado", demand: "+85%", demandPercent: 95, duration: "40 horas", category: "sales" },
+        { id: 2, name: "CRM", level: "Intermedio", demand: "+72%", demandPercent: 88, duration: "30 horas", category: "sales" },
+        { id: 3, name: "Prospección de Clientes", level: "Intermedio", demand: "+78%", demandPercent: 90, duration: "35 horas", category: "sales" },
+        { id: 4, name: "Cierre de Ventas", level: "Avanzado", demand: "+82%", demandPercent: 92, duration: "25 horas", category: "sales" },
+      ]
+    },
+    // Administrativo
+    "Asistente Ejecutivo": {
+      title: "Asistente Ejecutivo",
+      icon: "📋",
+      category: "admin",
+      description: "Gestión administrativa",
+      totalJobs: 2154,
+      avgSalary: "$1,200 - $2,200",
+      color: "#6B7280",
+      skills: [
+        { id: 1, name: "Office 365", level: "Intermedio", demand: "+85%", demandPercent: 94, duration: "30 horas", category: "admin" },
+        { id: 2, name: "Gestión de Agenda", level: "Intermedio", demand: "+72%", demandPercent: 88, duration: "20 horas", category: "admin" },
+        { id: 3, name: "Atención al Cliente", level: "Intermedio", demand: "+78%", demandPercent: 90, duration: "25 horas", category: "admin" },
+        { id: 4, name: "Organización de Eventos", level: "Básico", demand: "+55%", demandPercent: 75, duration: "35 horas", category: "admin" },
+      ]
+    },
+  };
+
+  const [activeRoadmap, setActiveRoadmap] = useState("Frontend Developer");
+  const [selectedCategory, setSelectedCategory] = useState("technology");
+  const [showCategorySelector, setShowCategorySelector] = useState(true);
+  const [selectedRoadmapData, setSelectedRoadmapData] = useState(roadmaps["Frontend Developer"]);
+
+  // Filtrar roadmaps por categoría
+  const getRoadmapsByCategory = (categoryId) => {
+    return Object.entries(roadmaps)
+      .filter(([key, value]) => value.category === categoryId)
+      .map(([key, value]) => ({ key, ...value }));
+  };
+
+  // Cargar skills del usuario desde API
+  useEffect(() => {
+    fetchUserSkills();
+    fetchUserRejectedSkills();
+  }, []);
+
+  const fetchUserSkills = async () => {
+    try {
+      const token = localStorage.getItem("mock_token") || "dummy_token";
+      const response = await fetch("http://localhost:8000/api/user/skills", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Transformar datos de API a formato local
+        const skillsMap = {};
+        data.skills?.forEach(skill => {
+          skillsMap[skill.name] = {
+            level: skill.progress || skill.level || 0,
+            completed: skill.completed || skill.progress >= 100,
+            completedAt: skill.completedAt,
+            id: skill.id
+          };
+        });
+        setUserSkills(skillsMap);
+      }
+    } catch (error) {
+      console.error("Error al cargar skills:", error);
+      // Datos de ejemplo
+      setUserSkills({
+        "HTML/CSS": { level: 100, completed: true, completedAt: "2024-01-10" },
+        "JavaScript": { level: 65, completed: false },
+        "React": { level: 30, completed: false },
+      });
     }
   };
 
-  const rejectedSkills = ["React", "TypeScript"];
-  const [selectedRoadmapData, setSelectedRoadmapData] = useState(roadmaps["Data Analyst"]);
-  const [activeRoadmap, setActiveRoadmap] = useState("Data Analyst");
+  const fetchUserRejectedSkills = async () => {
+    try {
+      const token = localStorage.getItem("mock_token") || "dummy_token";
+      const response = await fetch("http://localhost:8000/api/user/rejected-skills", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserRejectedSkills(data.rejectedSkills || []);
+      }
+    } catch (error) {
+      console.error("Error al cargar rechazos:", error);
+      setUserRejectedSkills(["React", "TypeScript"]);
+    }
+  };
 
-  const handleNodePress = (node) => {
-    setSelectedSkill(node);
+  // Agregar skill al usuario
+  const addUserSkill = async (skillName, progress = 0) => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("mock_token") || "dummy_token";
+      const response = await fetch("http://localhost:8000/api/user/skills", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: skillName,
+          progress: progress,
+          category: selectedRoadmapData?.category || "technology"
+        })
+      });
+
+      if (response.ok) {
+        const newSkill = await response.json();
+        setUserSkills(prev => ({
+          ...prev,
+          [skillName]: {
+            level: progress,
+            completed: progress >= 100,
+            id: newSkill.id
+          }
+        }));
+        Alert.alert("Éxito", `¡${skillName} agregado a tu perfil!`);
+        return true;
+      } else {
+        const error = await response.json();
+        Alert.alert("Error", error.message || "No se pudo agregar la skill");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error al agregar skill:", error);
+      Alert.alert("Error", "Error de conexión");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Actualizar progreso de skill
+  const updateSkillProgress = async (skillName, newProgress) => {
+    const skillId = userSkills[skillName]?.id;
+    if (!skillId) return false;
+
+    try {
+      const token = localStorage.getItem("mock_token") || "dummy_token";
+      const response = await fetch(`http://localhost:8000/api/user/skills/${skillId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ progress: newProgress })
+      });
+
+      if (response.ok) {
+        setUserSkills(prev => ({
+          ...prev,
+          [skillName]: {
+            ...prev[skillName],
+            level: newProgress,
+            completed: newProgress >= 100
+          }
+        }));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error al actualizar skill:", error);
+      return false;
+    }
+  };
+
+  const handleNodePress = (skill) => {
+    setSelectedSkill(skill);
     setShowCourseModal(true);
   };
 
-  const handleCompleteCourse = (skillName, courseName) => {
-    setUserSkills(prev => ({
-      ...prev,
-      [skillName]: { 
-        ...prev[skillName], 
-        level: Math.min(prev[skillName]?.level + 20 || 20, 100), 
-        completed: prev[skillName]?.level + 20 >= 100 
-      }
-    }));
+  const handleCompleteCourse = async (skillName, courseName) => {
+    const currentSkill = userSkills[skillName];
+    const newProgress = Math.min((currentSkill?.level || 0) + 20, 100);
+    const isCompleted = newProgress >= 100;
+
+    if (currentSkill?.id) {
+      await updateSkillProgress(skillName, newProgress);
+    } else {
+      await addUserSkill(skillName, newProgress);
+    }
+
+    if (isCompleted) {
+      Alert.alert("🎉 Felicitaciones", `¡Has completado ${skillName}!`);
+    } else {
+      Alert.alert("Progreso actualizado", `${skillName}: ${newProgress}% completado`);
+    }
   };
 
   const getNodeStatus = (skillName) => {
@@ -93,12 +358,13 @@ export default function SkillsScreen() {
       if (userSkills[skillName].completed) return "completed";
       if (userSkills[skillName].level > 0) return "in-progress";
     }
+    if (userRejectedSkills.includes(skillName)) return "rejected";
     return "pending";
   };
 
   const completedCount = Object.values(userSkills).filter(s => s.completed).length;
   const inProgressCount = Object.values(userSkills).filter(s => s.level > 0 && !s.completed).length;
-  const totalNodes = selectedRoadmapData.nodes.length;
+  const totalSkills = selectedRoadmapData?.skills?.length || 0;
 
   return (
     <View style={styles.container}>
@@ -108,8 +374,8 @@ export default function SkillsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Banner de alerta */}
-        {rejectedSkills.length > 0 && (
+        {/* Banner de alerta - habilidades rechazadas */}
+        {userRejectedSkills.length > 0 && (
           <TouchableOpacity style={styles.alertBanner} onPress={() => setShowSkillAlert(true)}>
             <View style={styles.alertIconCircle}>
               <Text style={styles.alertIcon}>⚠️</Text>
@@ -117,175 +383,209 @@ export default function SkillsScreen() {
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>Habilidades que te faltan</Text>
               <Text style={styles.alertText}>
-                Fuiste rechazado por {rejectedSkills.join(", ")}
+                Fuiste rechazado por {userRejectedSkills.slice(0, 2).join(", ")}
+                {userRejectedSkills.length > 2 && ` y ${userRejectedSkills.length - 2} más`}
               </Text>
             </View>
             <Text style={styles.alertArrow}>→</Text>
           </TouchableOpacity>
         )}
 
-        {/* Selector de roadmap */}
-        <View style={styles.roadmapSelector}>
-          {Object.keys(roadmaps).map(roadmap => (
-            <TouchableOpacity 
-              key={roadmap}
-              style={[styles.selectorButton, activeRoadmap === roadmap && styles.selectorButtonActive]}
+        {/* Selector de categoría */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categorySelector}>
+          {Object.entries(careerCategories).map(([key, cat]) => (
+            <TouchableOpacity
+              key={key}
+              style={[
+                styles.categoryButton,
+                selectedCategory === key && { backgroundColor: cat.color, borderColor: cat.color }
+              ]}
               onPress={() => {
-                setActiveRoadmap(roadmap);
-                setSelectedRoadmapData(roadmaps[roadmap]);
+                setSelectedCategory(key);
+                setShowCategorySelector(true);
+                // Seleccionar primer roadmap de la categoría
+                const categoryRoadmaps = getRoadmapsByCategory(key);
+                if (categoryRoadmaps.length > 0) {
+                  setActiveRoadmap(categoryRoadmaps[0].key);
+                  setSelectedRoadmapData(roadmaps[categoryRoadmaps[0].key]);
+                }
               }}
             >
-              <Text style={styles.selectorIcon}>{roadmaps[roadmap].icon}</Text>
-              <Text style={[styles.selectorText, activeRoadmap === roadmap && styles.selectorTextActive]}>
-                {roadmap}
+              <Text style={styles.categoryIcon}>{cat.icon}</Text>
+              <Text style={[styles.categoryText, selectedCategory === key && styles.categoryTextActive]}>
+                {cat.name}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
+
+        {/* Selector de roadmap específico dentro de la categoría */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roadmapSelector}>
+          {getRoadmapsByCategory(selectedCategory).map(roadmap => (
+            <TouchableOpacity
+              key={roadmap.key}
+              style={[
+                styles.selectorButton,
+                activeRoadmap === roadmap.key && { backgroundColor: roadmap.color, borderColor: roadmap.color }
+              ]}
+              onPress={() => {
+                setActiveRoadmap(roadmap.key);
+                setSelectedRoadmapData(roadmaps[roadmap.key]);
+                setShowCategorySelector(false);
+              }}
+            >
+              <Text style={styles.selectorIcon}>{roadmap.icon}</Text>
+              <Text style={[styles.selectorText, activeRoadmap === roadmap.key && styles.selectorTextActive]}>
+                {roadmap.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Info del roadmap */}
-        <View style={styles.roadmapInfo}>
-          <View style={[styles.roadmapHeader, { backgroundColor: selectedRoadmapData.color + '10' }]}>
-            <Text style={styles.roadmapIcon}>{selectedRoadmapData.icon}</Text>
-            <View>
-              <Text style={styles.roadmapTitle}>{selectedRoadmapData.title}</Text>
-              <Text style={styles.roadmapDescription}>{selectedRoadmapData.description}</Text>
+        {selectedRoadmapData && (
+          <>
+            <View style={styles.roadmapInfo}>
+              <View style={[styles.roadmapHeader, { backgroundColor: selectedRoadmapData.color + '10' }]}>
+                <Text style={styles.roadmapIcon}>{selectedRoadmapData.icon}</Text>
+                <View>
+                  <Text style={styles.roadmapTitle}>{selectedRoadmapData.title}</Text>
+                  <Text style={styles.roadmapDescription}>{selectedRoadmapData.description}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{selectedRoadmapData.totalJobs.toLocaleString()}</Text>
+                  <Text style={styles.statLabel}>Vacantes</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{selectedRoadmapData.avgSalary}</Text>
+                  <Text style={styles.statLabel}>Salario</Text>
+                </View>
+              </View>
             </View>
-          </View>
-          
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{selectedRoadmapData.totalJobs}</Text>
-              <Text style={styles.statLabel}>Vacantes</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{selectedRoadmapData.avgSalary}</Text>
-              <Text style={styles.statLabel}>Salario</Text>
-            </View>
-          </View>
-        </View>
 
-        {/* Roadmap visual */}
-        <View style={styles.roadmapContainer}>
-          <Text style={styles.sectionTitle}>Ruta de aprendizaje</Text>
-          
-          {selectedRoadmapData.nodes.map((node, index) => {
-            const status = getNodeStatus(node.name);
-            const isRejected = rejectedSkills.includes(node.name);
-            
-            return (
-              <View key={node.id} style={styles.roadmapNode}>
-                {/* Línea conectora */}
-                {index > 0 && (
-                  <View style={[
-                    styles.connectorLine,
-                    status === "completed" && styles.connectorLineCompleted
-                  ]} />
-                )}
+            {/* Roadmap visual - skills */}
+            <View style={styles.roadmapContainer}>
+              <Text style={styles.sectionTitle}>Ruta de aprendizaje</Text>
+              
+              {selectedRoadmapData.skills.map((skill, index) => {
+                const status = getNodeStatus(skill.name);
                 
-                {/* Nodo */}
-                <TouchableOpacity 
-                  style={[
-                    styles.nodeCard,
-                    status === "completed" && styles.nodeCardCompleted,
-                    status === "in-progress" && styles.nodeCardProgress,
-                    isRejected && !userSkills[node.name]?.completed && styles.nodeCardRejected
-                  ]}
-                  onPress={() => handleNodePress(node)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.nodeLeft}>
-                    <View style={[
-                      styles.nodeStatusIcon,
-                      status === "completed" && styles.nodeStatusCompleted,
-                      status === "in-progress" && styles.nodeStatusProgress,
-                      isRejected && !userSkills[node.name]?.completed && styles.nodeStatusRejected
-                    ]}>
-                      <Text style={styles.nodeStatusText}>
-                        {status === "completed" ? "✓" : 
-                         status === "in-progress" ? "●" : 
-                         isRejected ? "!" : index + 1}
-                      </Text>
-                    </View>
+                return (
+                  <View key={skill.id} style={styles.roadmapNode}>
+                    {index > 0 && (
+                      <View style={[
+                        styles.connectorLine,
+                        status === "completed" && styles.connectorLineCompleted
+                      ]} />
+                    )}
                     
-                    <View style={styles.nodeContent}>
-                      <Text style={styles.nodeName}>{node.name}</Text>
-                      <View style={styles.nodeTags}>
-                        <View style={styles.tag}>
-                          <Text style={styles.tagText}>{node.level}</Text>
+                    <TouchableOpacity 
+                      style={[
+                        styles.nodeCard,
+                        status === "completed" && styles.nodeCardCompleted,
+                        status === "in-progress" && styles.nodeCardProgress,
+                        status === "rejected" && styles.nodeCardRejected
+                      ]}
+                      onPress={() => handleNodePress(skill)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.nodeLeft}>
+                        <View style={[
+                          styles.nodeStatusIcon,
+                          status === "completed" && styles.nodeStatusCompleted,
+                          status === "in-progress" && styles.nodeStatusProgress,
+                          status === "rejected" && styles.nodeStatusRejected
+                        ]}>
+                          <Text style={styles.nodeStatusText}>
+                            {status === "completed" ? "✓" : 
+                             status === "in-progress" ? "●" : 
+                             status === "rejected" ? "!" : index + 1}
+                          </Text>
                         </View>
-                        <View style={styles.tag}>
-                          <Text style={styles.tagText}>⏱️ {node.duration}</Text>
-                        </View>
-                      </View>
-                      
-                      {/* Barra de demanda */}
-                      <View style={styles.demandWrapper}>
-                        <View style={styles.demandBar}>
-                          <View style={[styles.demandFill, { width: `${node.demandPercent}%`, backgroundColor: selectedRoadmapData.color }]} />
-                        </View>
-                        <Text style={styles.demandValue}>{node.demand}</Text>
-                      </View>
-                      
-                      {/* Progreso del usuario */}
-                      {userSkills[node.name] && userSkills[node.name].level > 0 && !userSkills[node.name].completed && (
-                        <View style={styles.userProgress}>
-                          <View style={styles.userProgressBar}>
-                            <View style={[styles.userProgressFill, { width: `${userSkills[node.name].level}%` }]} />
+                        
+                        <View style={styles.nodeContent}>
+                          <Text style={styles.nodeName}>{skill.name}</Text>
+                          <View style={styles.nodeTags}>
+                            <View style={styles.tag}>
+                              <Text style={styles.tagText}>{skill.level}</Text>
+                            </View>
+                            <View style={styles.tag}>
+                              <Text style={styles.tagText}>⏱️ {skill.duration}</Text>
+                            </View>
                           </View>
-                          <Text style={styles.userProgressText}>{userSkills[node.name].level}% completado</Text>
+                          
+                          <View style={styles.demandWrapper}>
+                            <View style={styles.demandBar}>
+                              <View style={[styles.demandFill, { width: `${skill.demandPercent}%`, backgroundColor: selectedRoadmapData.color }]} />
+                            </View>
+                            <Text style={styles.demandValue}>{skill.demand}</Text>
+                          </View>
+                          
+                          {userSkills[skill.name] && userSkills[skill.name].level > 0 && !userSkills[skill.name].completed && (
+                            <View style={styles.userProgress}>
+                              <View style={styles.userProgressBar}>
+                                <View style={[styles.userProgressFill, { width: `${userSkills[skill.name].level}%` }]} />
+                              </View>
+                              <Text style={styles.userProgressText}>{userSkills[skill.name].level}% completado</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      
+                      {status === "completed" && (
+                        <View style={styles.completedBadge}>
+                          <Text style={styles.completedBadgeText}>✔</Text>
                         </View>
                       )}
-                    </View>
+                      
+                      {status === "rejected" && (
+                        <View style={styles.rejectedBadge}>
+                          <Text style={styles.rejectedBadgeText}>!</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  
-                  {status === "completed" && (
-                    <View style={styles.completedBadge}>
-                      <Text style={styles.completedBadgeText}>✔</Text>
-                    </View>
-                  )}
-                  
-                  {isRejected && !userSkills[node.name]?.completed && (
-                    <View style={styles.rejectedBadge}>
-                      <Text style={styles.rejectedBadgeText}>!</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
+                );
+              })}
+            </View>
 
-        {/* Estadísticas generales */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Tu progreso</Text>
-          
-          <View style={styles.globalProgress}>
-            <View style={styles.globalProgressHeader}>
-              <Text style={styles.globalProgressLabel}>Completado</Text>
-              <Text style={styles.globalProgressPercent}>{Math.round(completedCount / totalNodes * 100)}%</Text>
+            {/* Estadísticas generales */}
+            <View style={styles.statsContainer}>
+              <Text style={styles.sectionTitle}>Tu progreso</Text>
+              
+              <View style={styles.globalProgress}>
+                <View style={styles.globalProgressHeader}>
+                  <Text style={styles.globalProgressLabel}>Completado</Text>
+                  <Text style={styles.globalProgressPercent}>
+                    {totalSkills > 0 ? Math.round(completedCount / totalSkills * 100) : 0}%
+                  </Text>
+                </View>
+                <View style={styles.globalProgressBar}>
+                  <View style={[styles.globalProgressFill, { width: `${totalSkills > 0 ? completedCount / totalSkills * 100 : 0}%` }]} />
+                </View>
+              </View>
+              
+              <View style={styles.skillStats}>
+                <View style={styles.skillStatCard}>
+                  <Text style={[styles.skillStatNumber, { color: selectedRoadmapData?.color || "#5B34F2" }]}>{completedCount}</Text>
+                  <Text style={styles.skillStatLabel}>Completadas</Text>
+                </View>
+                <View style={styles.skillStatCard}>
+                  <Text style={[styles.skillStatNumber, { color: "#F59E0B" }]}>{inProgressCount}</Text>
+                  <Text style={styles.skillStatLabel}>En curso</Text>
+                </View>
+                <View style={styles.skillStatCard}>
+                  <Text style={[styles.skillStatNumber, { color: "#9CA3AF" }]}>{Math.max(0, totalSkills - completedCount - inProgressCount)}</Text>
+                  <Text style={styles.skillStatLabel}>Pendientes</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.globalProgressBar}>
-              <View style={[styles.globalProgressFill, { width: `${completedCount / totalNodes * 100}%` }]} />
-            </View>
-          </View>
-          
-          <View style={styles.skillStats}>
-            <View style={styles.skillStatCard}>
-              <Text style={[styles.skillStatNumber, { color: selectedRoadmapData.color }]}>{completedCount}</Text>
-              <Text style={styles.skillStatLabel}>Completadas</Text>
-            </View>
-            <View style={styles.skillStatCard}>
-              <Text style={[styles.skillStatNumber, { color: "#F59E0B" }]}>{inProgressCount}</Text>
-              <Text style={styles.skillStatLabel}>En curso</Text>
-            </View>
-            <View style={styles.skillStatCard}>
-              <Text style={[styles.skillStatNumber, { color: "#9CA3AF" }]}>{totalNodes - completedCount - inProgressCount}</Text>
-              <Text style={styles.skillStatLabel}>Pendientes</Text>
-            </View>
-          </View>
-        </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Modal de cursos */}
@@ -319,29 +619,35 @@ export default function SkillsScreen() {
               </View>
               
               <Text style={styles.coursesTitle}>Cursos recomendados</Text>
-              {selectedSkill?.courses.map((course, idx) => (
-                <View key={idx} style={styles.courseCard}>
-                  <View>
-                    <Text style={styles.courseName}>{course.name}</Text>
-                    <Text style={styles.coursePlatform}>{course.platform}</Text>
-                  </View>
-                  <View style={styles.courseRight}>
-                    <View style={styles.ratingContainer}>
-                      <Text style={styles.ratingStar}>★</Text>
-                      <Text style={styles.ratingText}>{course.rating}</Text>
-                    </View>
-                    <Text style={[styles.coursePrice, course.price === "Gratis" && styles.freePrice]}>
-                      {course.price}
-                    </Text>
-                    <TouchableOpacity 
-                      style={styles.startCourseButton}
-                      onPress={() => handleCompleteCourse(selectedSkill.name, course.name)}
-                    >
-                      <Text style={styles.startCourseText}>Iniciar</Text>
-                    </TouchableOpacity>
-                  </View>
+              
+              {/* Cursos simulados */}
+              <View style={styles.courseCard}>
+                <View>
+                  <Text style={styles.courseName}>{selectedSkill?.name} desde Cero</Text>
+                  <Text style={styles.coursePlatform}>CarrerOn</Text>
                 </View>
-              ))}
+                <View style={styles.courseRight}>
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingStar}>★</Text>
+                    <Text style={styles.ratingText}>4.8</Text>
+                  </View>
+                  <Text style={styles.freePrice}>Gratis</Text>
+                  <TouchableOpacity 
+                    style={styles.startCourseButton}
+                    onPress={() => {
+                      handleCompleteCourse(selectedSkill?.name, "Curso básico");
+                      setShowCourseModal(false);
+                    }}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.startCourseText}>Iniciar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
               
               <TouchableOpacity style={styles.simulateButtonModal}>
                 <Text style={styles.simulateButtonTextModal}>Simular entrevista técnica</Text>
@@ -351,7 +657,7 @@ export default function SkillsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de alerta */}
+      {/* Modal de alerta - habilidades rechazadas */}
       <Modal visible={showSkillAlert} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.alertModal}>
@@ -364,11 +670,25 @@ export default function SkillsScreen() {
             </Text>
             
             <View style={styles.rejectedSkillsList}>
-              {rejectedSkills.map(skill => (
+              {userRejectedSkills.map(skill => (
                 <View key={skill} style={styles.rejectedSkillItem}>
                   <Text style={styles.rejectedSkillIcon}>📘</Text>
                   <Text style={styles.rejectedSkillName}>{skill}</Text>
-                  <TouchableOpacity style={styles.learnNowButton}>
+                  <TouchableOpacity 
+                    style={styles.learnNowButton}
+                    onPress={() => {
+                      setShowSkillAlert(false);
+                      // Buscar y seleccionar roadmap que contenga esta skill
+                      const roadmapWithSkill = Object.entries(roadmaps).find(([key, value]) =>
+                        value.skills.some(s => s.name === skill)
+                      );
+                      if (roadmapWithSkill) {
+                        setActiveRoadmap(roadmapWithSkill[0]);
+                        setSelectedRoadmapData(roadmapWithSkill[1]);
+                        setSelectedCategory(roadmapWithSkill[1].category);
+                      }
+                    }}
+                  >
                     <Text style={styles.learnNowText}>Aprender →</Text>
                   </TouchableOpacity>
                 </View>
@@ -385,6 +705,7 @@ export default function SkillsScreen() {
   );
 }
 
+// Los estilos se mantienen igual que en tu código original
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -406,7 +727,6 @@ const styles = StyleSheet.create({
     color: '#DCE5EC',
     marginTop: 4,
   },
-  // Alert Banner
   alertBanner: {
     backgroundColor: '#FEF2F2',
     margin: 16,
@@ -448,40 +768,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // Roadmap Selector
-  roadmapSelector: {
-    flexDirection: 'row',
-    margin: 16,
-    gap: 8,
+  categorySelector: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexGrow: 0,
   },
-  selectorButton: {
-    flex: 1,
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 30,
-    alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  categoryIcon: {
+    fontSize: 16,
+  },
+  categoryText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+  roadmapSelector: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    flexGrow: 0,
+  },
+  selectorButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 30,
+    marginRight: 10,
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
     gap: 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-  },
-  selectorButtonActive: {
-    backgroundColor: '#5B34F2',
-    borderColor: '#5B34F2',
   },
   selectorIcon: {
     fontSize: 14,
   },
   selectorText: {
-    color: '#6B7280',
+    fontSize: 13,
     fontWeight: '500',
-    fontSize: 12,
+    color: '#6B7280',
   },
   selectorTextActive: {
     color: '#FFFFFF',
   },
-  // Roadmap Info
   roadmapInfo: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
@@ -538,7 +880,6 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: '#E5E7EB',
   },
-  // Roadmap Nodes
   roadmapContainer: {
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -712,7 +1053,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  // Stats Container
   statsContainer: {
     backgroundColor: '#FFFFFF',
     margin: 16,
@@ -773,7 +1113,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
-  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -883,12 +1222,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
   },
-  coursePrice: {
+  freePrice: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#1F2937',
-  },
-  freePrice: {
     color: '#10B981',
   },
   startCourseButton: {
