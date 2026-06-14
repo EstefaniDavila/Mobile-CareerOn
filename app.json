@@ -1,29 +1,29 @@
 {
   "expo": {
-    "name": "frontend-mobile",
-    "slug": "frontend-mobile",
+    "name": "CareerOn",
+    "slug": "careeron",
     "version": "1.0.0",
     "scheme": "careeron",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logocarre.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/logocarre.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logocarre.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/logocarre.png"
     },
     "plugins": [
       "expo-web-browser",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "@react-native-voice/voice"
     ]
   }
 }
