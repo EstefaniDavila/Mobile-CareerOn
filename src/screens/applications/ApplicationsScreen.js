@@ -1,117 +1,152 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Image } from 'react-native';
-import { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Image, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import studentService from '../../services/student';
 
 export default function ApplicationsScreen() {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingStates, setLoadingStates] = useState({
+    Pendiente: false,
+    En_revision: false,
+    Entrevista: false,
+    Rechazado: false,
+    Ganador: false,
+  });
   
   const [applications, setApplications] = useState({
-    saved: [
-      {
-        id: 1,
-        title: "Frontend Developer",
-        company: "TechSolutions",
-        location: "Remoto",
-        salary: "$3,500 - $4,800",
-        postedDate: "Hace 2 días",
-        companyLogo: "https://logo.clearbit.com/techsolutions.com",
-        matchPercent: 85,
-        requirements: ["React", "TypeScript", "Next.js"],
-        savedDate: "2024-01-15",
-      },
-      {
-        id: 2,
-        title: "UX/UI Designer",
-        company: "Globant",
-        location: "Remoto",
-        salary: "$2,200 - $3,000",
-        postedDate: "Hace 1 día",
-        companyLogo: "https://logo.clearbit.com/globant.com",
-        matchPercent: 72,
-        requirements: ["Figma", "UX Research", "Prototyping"],
-        savedDate: "2024-01-14",
-      },
-    ],
-    applied: [
-      {
-        id: 3,
-        title: "Data Analyst Junior",
-        company: "MercadoLibre",
-        location: "Buenos Aires",
-        salary: "$1,800 - $2,400",
-        postedDate: "Hace 5 días",
-        companyLogo: "https://logo.clearbit.com/mercadolibre.com",
-        matchPercent: 90,
-        requirements: ["SQL", "Python", "Power BI"],
-        appliedDate: "2024-01-10",
-        status: "En revisión",
-      },
-      {
-        id: 4,
-        title: "Backend Developer Python",
-        company: "Naranja X",
-        location: "Córdoba",
-        salary: "$2,500 - $3,500",
-        postedDate: "Hace 3 días",
-        companyLogo: "https://logo.clearbit.com/naranjax.com",
-        matchPercent: 78,
-        requirements: ["Python", "Django", "PostgreSQL"],
-        appliedDate: "2024-01-12",
-        status: "En revisión",
-      },
-    ],
-    interview: [
-      {
-        id: 5,
-        title: "DevOps Engineer",
-        company: "Despegar",
-        location: "Remoto",
-        salary: "$3,000 - $4,200",
-        postedDate: "Hace 4 días",
-        companyLogo: "https://logo.clearbit.com/despegar.com",
-        matchPercent: 88,
-        requirements: ["Docker", "Kubernetes", "CI/CD"],
-        appliedDate: "2024-01-08",
-        interviewDate: "2024-01-20",
-        interviewType: "Técnica - Zoom",
-        status: "Agendada",
-      },
-    ],
-    feedback: [
-      {
-        id: 6,
-        title: "React Native Developer",
-        company: "PedidosYa",
-        location: "Remoto",
-        salary: "$2,800 - $3,800",
-        postedDate: "Hace 1 semana",
-        companyLogo: "https://logo.clearbit.com/pedidosya.com",
-        matchPercent: 68,
-        requirements: ["React Native", "Redux", "Firebase"],
-        appliedDate: "2024-01-05",
-        closedDate: "2024-01-12",
-        feedbackTags: ["Falta profundizar en React Native", "Expectativa salarial alta", "Comunicación técnica"],
-        status: "No seleccionado",
-      },
-      {
-        id: 7,
-        title: "Product Manager",
-        company: "Meli",
-        location: "Híbrido",
-        salary: "$3,500 - $5,000",
-        postedDate: "Hace 2 semanas",
-        companyLogo: "https://logo.clearbit.com/mercadolibre.com",
-        matchPercent: 65,
-        requirements: ["Agile", "Data Driven", "Leadership"],
-        appliedDate: "2024-01-02",
-        closedDate: "2024-01-10",
-        feedbackTags: ["Falta experiencia en liderazgo", "Métricas de producto limitadas"],
-        status: "No seleccionado",
-      },
-    ],
+    Pendiente: [],
+    En_revision: [],
+    Entrevista: [],
+    Rechazado: [],
+    Ganador: [],
   });
 
+  // Mapeo de estados para mostrar en la UI
+  const statusMapping = {
+    'Pendiente': { title: '📌 Pendientes', icon: '⏳', columnId: 'Pendiente' },
+    'En_revision': { title: '📤 En Revisión', icon: '👀', columnId: 'En_revision' },
+    'Entrevista': { title: '🎙️ En Entrevista', icon: '🎯', columnId: 'Entrevista' },
+    'Rechazado': { title: '❌ Rechazados', icon: '💔', columnId: 'Rechazado' },
+    'Ganador': { title: '🏆 Ganadores', icon: '🎉', columnId: 'Ganador' },
+  };
+
+  // Cargar todas las aplicaciones por estado
+  const loadApplicationsByStatus = async (status) => {
+    console.log(`🔄 [${status}] Iniciando carga de aplicaciones...`);
+    console.log(`🔍 [${status}] Status enviado a la API:`, status);
+    
+    setLoadingStates(prev => ({ ...prev, [status]: true }));
+    try {
+      const result = await studentService.getApplicationsByStatus(status);
+      console.log(`📦 [${status}] Respuesta completa de la API:`, JSON.stringify(result, null, 2));
+      
+      if (result.success && result.data) {
+        console.log(`✅ [${status}] Éxito. Cantidad de items recibidos:`, result.data.length);
+        console.log(`📝 [${status}] Datos crudos de la API:`, JSON.stringify(result.data, null, 2));
+        
+        // Mapear los datos de la API al formato de la UI
+        const formattedApps = result.data.map((app, index) => {
+          console.log(`🔄 [${status}] Procesando item ${index + 1}:`);
+          console.log(`📋 [${status}] Item completo:`, JSON.stringify(app, null, 2));
+          
+          // IMPORTANTE: Los datos del trabajo están anidados en JobPost
+          const jobData = app.JobPost || {};
+          console.log(`💼 [${status}] JobPost extraído:`, JSON.stringify(jobData, null, 2));
+          
+          const formatted = {
+            id: app.id,
+            // Datos del trabajo (vienen de JobPost)
+            title: jobData.title || app.job_title || app.title || "Sin título",
+            company: app.company_name || app.company || jobData.company || "Sin empresa",
+            location: jobData.location || app.location || "No especificada",
+            salary: jobData.salary_range || app.salary_range || app.salary || "No especificado",
+            // Datos de la aplicación
+            postedDate: app.created_at || app.posted_date,
+            companyLogo: app.company_logo || `https://logo.clearbit.com/${(app.company_name || app.company || jobData.company || "")?.toLowerCase().replace(/\s/g, '')}.com`,
+            matchPercent: app.match_percent || app.match_score || 75,
+            requirements: jobData.requirements || app.requirements || [],
+            appliedDate: app.applied_date || app.created_at,
+            status: app.status,
+            interviewDate: app.interview_date,
+            interviewType: app.interview_type,
+            feedbackTags: app.feedback_tags || [],
+            closedDate: app.closed_date,
+            // Guardar datos originales para depuración
+            _raw: app
+          };
+          
+          console.log(`✨ [${status}] Item formateado ${index + 1}:`, JSON.stringify(formatted, null, 2));
+          return formatted;
+        });
+        
+        console.log(`📊 [${status}] Total de aplicaciones formateadas:`, formattedApps.length);
+        console.log(`📋 [${status}] Lista formateada completa:`, JSON.stringify(formattedApps, null, 2));
+        
+        setApplications(prev => ({
+          ...prev,
+          [status]: formattedApps
+        }));
+      } else {
+        console.warn(`⚠️ [${status}] La API no retornó éxito o no tiene datos:`, result);
+        console.log(`📭 [${status}] Estableciendo array vacío para ${status}`);
+        setApplications(prev => ({
+          ...prev,
+          [status]: []
+        }));
+      }
+    } catch (error) {
+      console.error(`❌ [${status}] Error cargando aplicaciones:`, error);
+      console.error(`❌ [${status}] Detalles del error:`, error.message, error.stack);
+      setApplications(prev => ({
+        ...prev,
+        [status]: []
+      }));
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [status]: false }));
+      console.log(`🏁 [${status}] Finalizada carga. Estado de carga: false`);
+    }
+  };
+
+  // Cargar todas las secciones al iniciar
+  useEffect(() => {
+    const loadAllApplications = async () => {
+      console.log('🚀 Iniciando carga de todas las aplicaciones...');
+      console.log('📋 Estados a cargar según BD: Pendiente, En_revision, Entrevista, Rechazado, Ganador');
+      console.log('🔍 Verificando que los estados coincidan exactamente con la BD:');
+      console.log('   - "Pendiente"');
+      console.log('   - "En_revision"'); 
+      console.log('   - "Entrevista"');
+      console.log('   - "Rechazado"');
+      console.log('   - "Ganador"');
+      
+      setLoading(true);
+      
+      await Promise.all([
+        loadApplicationsByStatus('Pendiente'),
+        loadApplicationsByStatus('En_revision'),
+        loadApplicationsByStatus('Entrevista'),
+        loadApplicationsByStatus('Rechazado'),
+        loadApplicationsByStatus('Ganador'),
+      ]);
+      
+      console.log('✅ Carga completa de todas las secciones');
+      console.log('📊 Resumen final de aplicaciones cargadas:', {
+        Pendiente: applications.Pendiente.length,
+        En_revision: applications.En_revision.length,
+        Entrevista: applications.Entrevista.length,
+        Rechazado: applications.Rechazado.length,
+        Ganador: applications.Ganador.length,
+      });
+      
+      setLoading(false);
+    };
+    
+    loadAllApplications();
+  }, []);
+
+  // Generar feedback con IA
   const generateAIFeedback = (tags, jobTitle, companyName) => {
     const feedbackTemplates = {
       "Falta profundizar en React Native": "Te recomendamos fortalecer tus conocimientos en React Native. Hay un curso gratuito de 20 horas en nuestra plataforma.",
@@ -135,27 +170,15 @@ export default function ApplicationsScreen() {
   };
 
   const handleViewFeedback = (application) => {
+    console.log('👁️ Ver feedback de aplicación:', application);
     setSelectedApplication(application);
     setShowFeedbackModal(true);
   };
 
   const handleViewDetails = (application, column) => {
+    console.log(`👁️ Ver detalles de aplicación en columna ${column}:`, application);
     setSelectedApplication({ ...application, column });
     setShowDetailsModal(true);
-  };
-
-  const moveToNextStage = (application, currentColumn) => {
-    const stages = ['saved', 'applied', 'interview'];
-    const currentIndex = stages.indexOf(currentColumn);
-    const nextStage = stages[currentIndex + 1];
-    
-    if (nextStage) {
-      setApplications(prev => ({
-        ...prev,
-        [currentColumn]: prev[currentColumn].filter(app => app.id !== application.id),
-        [nextStage]: [...prev[nextStage], { ...application, movedDate: new Date().toISOString() }]
-      }));
-    }
   };
 
   const ColumnCard = ({ application, column }) => (
@@ -190,7 +213,7 @@ export default function ApplicationsScreen() {
         <Text style={styles.matchText}>{application.matchPercent}% match con tu perfil</Text>
       </View>
       
-      {column === 'feedback' && application.feedbackTags && (
+      {(column === 'Rechazado' || column === 'Ganador') && application.feedbackTags && application.feedbackTags.length > 0 && (
         <TouchableOpacity 
           style={styles.feedbackButton}
           onPress={(e) => {
@@ -201,49 +224,62 @@ export default function ApplicationsScreen() {
           <Text style={styles.feedbackButtonText}>📝 Ver feedback de IA</Text>
         </TouchableOpacity>
       )}
-      
-      {column !== 'feedback' && (
-        <TouchableOpacity 
-          style={styles.moveButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            moveToNextStage(application, column);
-          }}
-        >
-          <Text style={styles.moveButtonText}>
-            {column === 'saved' && '📝 Postularme →'}
-            {column === 'applied' && '🎯 Pasar a entrevista →'}
-            {column === 'interview' && '✅ Marcar como finalizado →'}
-          </Text>
-        </TouchableOpacity>
-      )}
     </TouchableOpacity>
   );
 
-  const Column = ({ title, count, applications, columnId, icon }) => (
-    <View style={styles.column}>
-      <View style={styles.columnHeader}>
-        <Text style={styles.columnIcon}>{icon}</Text>
-        <Text style={styles.columnTitle}>{title}</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{count}</Text>
-        </View>
-      </View>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 }}
-      >
-        {applications.map(app => (
-          <ColumnCard key={app.id} application={app} column={columnId} />
-        ))}
-        {applications.length === 0 && (
-          <View style={styles.emptyColumn}>
-            <Text style={styles.emptyColumnText}>Sin aplicaciones</Text>
+  const Column = ({ title, count, applications, columnId, icon, isLoading }) => {
+    console.log(`🎨 Renderizando columna ${columnId} con ${count} aplicaciones`);
+    return (
+      <View style={styles.column}>
+        <View style={styles.columnHeader}>
+          <Text style={styles.columnIcon}>{icon}</Text>
+          <Text style={styles.columnTitle}>{title}</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{count}</Text>
           </View>
-        )}
-      </ScrollView>
-    </View>
-  );
+        </View>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 16 }}
+        >
+          {isLoading ? (
+            <View style={styles.loadingColumn}>
+              <ActivityIndicator size="small" color="#5B34F2" />
+              <Text style={styles.loadingColumnText}>Cargando...</Text>
+            </View>
+          ) : (
+            <>
+              {applications.map(app => (
+                <ColumnCard key={app.id} application={app} column={columnId} />
+              ))}
+              {applications.length === 0 && (
+                <View style={styles.emptyColumn}>
+                  <Text style={styles.emptyColumnText}>Sin aplicaciones</Text>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#5B34F2" />
+        <Text style={styles.loadingText}>Cargando tus postulaciones...</Text>
+      </View>
+    );
+  }
+
+  console.log('📱 Renderizando pantalla principal con estados:', {
+    Pendiente: applications.Pendiente.length,
+    En_revision: applications.En_revision.length,
+    Entrevista: applications.Entrevista.length,
+    Rechazado: applications.Rechazado.length,
+    Ganador: applications.Ganador.length,
+  });
 
   return (
     <View style={styles.container}>
@@ -258,32 +294,44 @@ export default function ApplicationsScreen() {
         contentContainerStyle={styles.kanbanContainer}
       >
         <Column 
-          title="Guardadas" 
-          count={applications.saved.length}
-          applications={applications.saved}
-          columnId="saved"
-          icon="📌"
+          title={statusMapping.Pendiente.title}
+          count={applications.Pendiente.length}
+          applications={applications.Pendiente}
+          columnId={statusMapping.Pendiente.columnId}
+          icon={statusMapping.Pendiente.icon}
+          isLoading={loadingStates.Pendiente}
         />
         <Column 
-          title="Postulado" 
-          count={applications.applied.length}
-          applications={applications.applied}
-          columnId="applied"
-          icon="📤"
+          title={statusMapping.En_revision.title}
+          count={applications.En_revision.length}
+          applications={applications.En_revision}
+          columnId={statusMapping.En_revision.columnId}
+          icon={statusMapping.En_revision.icon}
+          isLoading={loadingStates.En_revision}
         />
         <Column 
-          title="En Entrevista" 
-          count={applications.interview.length}
-          applications={applications.interview}
-          columnId="interview"
-          icon="🎙️"
+          title={statusMapping.Entrevista.title}
+          count={applications.Entrevista.length}
+          applications={applications.Entrevista}
+          columnId={statusMapping.Entrevista.columnId}
+          icon={statusMapping.Entrevista.icon}
+          isLoading={loadingStates.Entrevista}
         />
         <Column 
-          title="Feedback" 
-          count={applications.feedback.length}
-          applications={applications.feedback}
-          columnId="feedback"
-          icon="💬"
+          title={statusMapping.Rechazado.title}
+          count={applications.Rechazado.length}
+          applications={applications.Rechazado}
+          columnId={statusMapping.Rechazado.columnId}
+          icon={statusMapping.Rechazado.icon}
+          isLoading={loadingStates.Rechazado}
+        />
+        <Column 
+          title={statusMapping.Ganador.title}
+          count={applications.Ganador.length}
+          applications={applications.Ganador}
+          columnId={statusMapping.Ganador.columnId}
+          icon={statusMapping.Ganador.icon}
+          isLoading={loadingStates.Ganador}
         />
       </ScrollView>
 
@@ -304,15 +352,17 @@ export default function ApplicationsScreen() {
                 <Text style={styles.feedbackPosition}>{selectedApplication?.title}</Text>
               </View>
               
-              <View style={styles.tagsContainer}>
-                <Text style={styles.tagsTitle}>📌 Tags de mejora:</Text>
-                {selectedApplication?.feedbackTags?.map((tag, idx) => (
-                  <View key={idx} style={styles.tagItem}>
-                    <Text style={styles.tagBullet}>🔴</Text>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
+              {selectedApplication?.feedbackTags && selectedApplication.feedbackTags.length > 0 && (
+                <View style={styles.tagsContainer}>
+                  <Text style={styles.tagsTitle}>📌 Tags de mejora:</Text>
+                  {selectedApplication.feedbackTags.map((tag, idx) => (
+                    <View key={idx} style={styles.tagItem}>
+                      <Text style={styles.tagBullet}>🔴</Text>
+                      <Text style={styles.tagText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               
               <View style={styles.aiFeedbackContainer}>
                 <View style={styles.aiHeader}>
@@ -382,16 +432,18 @@ export default function ApplicationsScreen() {
                 )}
               </View>
               
-              <View style={styles.requirementsSection}>
-                <Text style={styles.sectionTitle}>✅ Requisitos clave</Text>
-                <View style={styles.requirementsList}>
-                  {selectedApplication?.requirements?.map((req, idx) => (
-                    <View key={idx} style={styles.requirementChip}>
-                      <Text style={styles.requirementChipText}>{req}</Text>
-                    </View>
-                  ))}
+              {selectedApplication?.requirements && selectedApplication.requirements.length > 0 && (
+                <View style={styles.requirementsSection}>
+                  <Text style={styles.sectionTitle}>✅ Requisitos clave</Text>
+                  <View style={styles.requirementsList}>
+                    {selectedApplication.requirements.map((req, idx) => (
+                      <View key={idx} style={styles.requirementChip}>
+                        <Text style={styles.requirementChipText}>{req}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              )}
               
               <View style={styles.matchSection}>
                 <Text style={styles.sectionTitle}>🎯 Compatibilidad</Text>
@@ -400,24 +452,6 @@ export default function ApplicationsScreen() {
                 </View>
                 <Text style={styles.matchPercentText}>{selectedApplication?.matchPercent}% de coincidencia</Text>
               </View>
-              
-              {selectedApplication?.column !== 'feedback' && (
-                <TouchableOpacity 
-                  style={styles.continueButton}
-                  onPress={() => {
-                    if (selectedApplication?.column !== 'feedback') {
-                      moveToNextStage(selectedApplication, selectedApplication.column);
-                    }
-                    setShowDetailsModal(false);
-                  }}
-                >
-                  <Text style={styles.continueButtonText}>
-                    {selectedApplication?.column === 'saved' && '📝 Continuar postulación →'}
-                    {selectedApplication?.column === 'applied' && '🎯 Preparar entrevista →'}
-                    {selectedApplication?.column === 'interview' && '✅ Marcar completado →'}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </ScrollView>
           </View>
         </View>
@@ -495,6 +529,26 @@ const styles = StyleSheet.create({
   emptyColumnText: {
     fontSize: 13,
     color: '#9CA3AF',
+  },
+  loadingColumn: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  loadingColumnText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#DCE5EC',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#5F6368',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -576,18 +630,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   feedbackButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  moveButton: {
-    backgroundColor: '#5B34F2',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  moveButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
@@ -807,17 +849,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#0F6C7A',
-  },
-  continueButton: {
-    backgroundColor: '#5B34F2',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });

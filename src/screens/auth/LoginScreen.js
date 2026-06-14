@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,209 +7,273 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Platform,
+  SafeAreaView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
-import { jwtDecode } from "jwt-decode";
 import api from "../../services/api";
-
-WebBrowser.maybeCompleteAuthSession();
-
-const discovery = {
-  authorizationEndpoint:
-    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-  tokenEndpoint: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-};
 
 export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: "27589cb4-be6b-4759-9106-e1d28c934a9e",
-      scopes: ["openid", "profile", "email", "User.Read"],
-      responseType: "id_token",
-      usePKCE: false,
-      redirectUri: AuthSession.makeRedirectUri({
-        scheme: "careeron",
-      }),
-      extraParams: {
-        nonce: "careeron_nonce_12345",
-        prompt: "select_account",
-      },
-    },
-    discovery,
-  );
-
-  useEffect(() => {
-    console.log("AuthSession Response cambió:", response?.type);
-    if (response?.type === "success") {
-      console.log("Microsoft devolvió éxito. Params:", response.params);
-      const { access_token, id_token } = response.params;
-      handleBackendLogin(id_token || access_token);
-    } else if (response?.type === "error") {
-      console.log("Error de Microsoft:", response.error);
-      Alert.alert(
-        "Error de Autenticación",
-        response.error?.message || "Error al iniciar sesión con Microsoft",
-      );
-    }
-  }, [response]);
-
-  const handleBackendLogin = async (token) => {
-    console.log(
-      "Iniciando handleBackendLogin con token de longitud:",
-      token ? token.length : "ninguno",
-    );
+  const handleLogin = async () => {
     setLoading(true);
+    
     try {
-      const decoded = jwtDecode(token);
-      console.log("Token decodificado:", decoded);
+      const mockUser = {
+        email: "estudiante0@utp.edu.pe",
+        name: "Estudiante Demo",
+        microsoft_id: "mock_student_123"
+      };
 
-      const email = decoded.email || decoded.preferred_username || decoded.upn;
-      const name = decoded.name || email?.split("@")[0];
+      console.log("Enviando al backend:", mockUser);
+      const response = await api.post("/auth/login", mockUser);
+      console.log("Respuesta del Backend:", response.data);
 
-      if (!email) {
-        console.log("No se encontró email en el token decodificado.");
-        Alert.alert("Error", "No se pudo obtener el correo de Microsoft.");
-        setLoading(false);
-        return;
-      }
+      if (response.data.status === "success" || response.data.status === "warning") {
+        // ===== CAMBIO IMPORTANTE AQUÍ =====
+        // Guardar el token JWT real si existe
+        if (response.data.token) {
+          await AsyncStorage.setItem("@auth_token", response.data.token);
+          console.log("✅ Token JWT guardado:", response.data.token);
+        } else {
+          // Si no hay token, al menos guardar algo (fallback)
+          console.warn("⚠️ No se recibió token del backend, usando email como fallback");
+          await AsyncStorage.setItem("@auth_token", response.data.user.email);
+        }
+        
+        // Guardar datos del usuario
+        await AsyncStorage.setItem("@user", JSON.stringify(response.data.user));
 
-      console.log("Llamando al backend en /auth/login con email:", email);
-      const apiResponse = await api.post("/auth/login", {
-        email: email,
-        name: name,
-        microsoft_id: decoded.oid || decoded.sub || "id_generico",
-      });
-      console.log("Respuesta del backend:", apiResponse.data);
-
-      if (
-        apiResponse.data.status === "success" ||
-        apiResponse.data.status === "warning"
-      ) {
-        const user = apiResponse.data.user;
-        console.log("Guardando usuario en AsyncStorage y redirigiendo...");
-        await AsyncStorage.setItem("@user", JSON.stringify(user));
-
-        if (user.type === "Pending") {
+        // Solo manejamos estudiantes
+        if (response.data.user.type === "Pending") {
           navigation.replace("Onboarding");
         } else {
           navigation.replace("MainTabs");
         }
       } else {
-        console.log("Backend devolvió error:", apiResponse.data.message);
-        Alert.alert("Error", apiResponse.data.message || "Ocurrió un error");
+        Alert.alert("Error", response.data.message || "Ocurrió un error");
       }
     } catch (error) {
-      console.error("Excepción atrapada en Login error:", error);
-      Alert.alert("Error", "No se pudo conectar con el servidor.");
+      console.error("Error conectando al backend:", error);
+      Alert.alert(
+        "Error de Conexión",
+        "Error conectando al backend. ¿Está encendido el servidor?"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={{
-          uri: "https://res.cloudinary.com/dpuu7ddmk/image/upload/f_auto,q_auto/v1/WhatsApp_Image_2026-05-15_at_07.33.47_f5iq9x",
-        }}
-        style={styles.logo}
-      />
-      <Text style={styles.title}>CarrerOn</Text>
-      <Text style={styles.subtitle}>Tu Copiloto de Empleabilidad</Text>
-
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>
-          Inicia sesión con tu cuenta UTP o corporativa:
-        </Text>
-
-        <TouchableOpacity
-          style={[styles.microsoftButton, !request ? styles.btnDisabled : {}]}
-          onPress={() => {
-            // promptAsync(); // OAuth Microsoft
-
-            navigation.replace("MainTabs"); // Bypass temporal
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <View style={styles.btnContent}>
-              <Image
-                source={{
-                  uri: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/512px-Microsoft_logo.svg.png",
-                }}
-                style={styles.msLogo}
-              />
-              <Text style={styles.buttonText}>Continuar con Microsoft</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.mockNote}>
-          * Inicio de sesión seguro vía OAuth 2.0
+    // Resto del JSX igual...
+    <SafeAreaView style={styles.container}>
+      <View style={styles.brandContainer}>
+        <View style={styles.logoWrapper}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={{
+                uri: "https://res.cloudinary.com/dpuu7ddmk/image/upload/f_auto,q_auto/v1/WhatsApp_Image_2026-05-15_at_07.33.47_f5iq9x",
+              }}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+        
+        <Text style={styles.title}>CarrerOn</Text>
+        <Text style={styles.subtitle}>
+          Tu copiloto de empleabilidad. Descubre tus brechas, optimiza tu CV y conecta con el mercado real.
         </Text>
       </View>
-    </View>
+
+      <View style={styles.formContainer}>
+        <View style={styles.headerText}>
+          <Text style={styles.loginTitle}>Iniciar Sesión</Text>
+          <Text style={styles.loginSubtitle}>
+            Ingresa con tu cuenta institucional de la universidad para continuar.
+          </Text>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.loginButtonText}>Iniciando sesión...</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.microsoftIcon}>
+                  <View style={styles.iconRed} />
+                  <View style={styles.iconGreen} />
+                  <View style={styles.iconBlue} />
+                  <View style={styles.iconYellow} />
+                </View>
+                <Text style={styles.loginButtonText}>
+                  Demo: Ingresar como Estudiante
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
+// Los estilos se mantienen igual
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  backgroundColor: "#DCE5EC",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 24,
-},
-  logo: { width: 150, height: 150, resizeMode: "contain", marginBottom: 20 },
+    flex: 1,
+    backgroundColor: "#DCE5EC",
+  },
+  brandContainer: {
+    flex: 1,
+    backgroundColor: "#5B34F2",
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  logoWrapper: {
+    marginBottom: 24,
+  },
+  logoContainer: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    padding: 20,
+    borderRadius: 35,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  logo: {
+    width: 110,
+    height: 110,
+  },
   title: {
-  fontSize: 38,
-  fontWeight: "700",
-  color: "#1C1C1C",
-  marginBottom: 8,
-},
+    fontSize: 44,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 12,
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
   subtitle: {
-  fontSize: 16,
-  color: "#5F6368",
-  marginBottom: 40,
-},
+    fontSize: 15,
+    color: "#E0D4FF",
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 300,
+  },
   formContainer: {
-  width: "100%",
-  backgroundColor: "#FFFFFF",
-  padding: 24,
-  borderRadius: 24,
-  elevation: 4,
-},
-  label: {
+    flex: 1.2,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+    marginTop: -25,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  headerText: {
+    marginBottom: 40,
+    marginTop: 8,
+  },
+  loginTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#1C1C1C",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  loginSubtitle: {
     fontSize: 14,
-    color: "#374151",
-    marginBottom: 20,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  buttonContainer: {
+    gap: 16,
+  },
+  loginButton: {
+    backgroundColor: "#5B34F2",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 12,
+    elevation: 2,
+    shadowColor: "#5B34F2",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
     textAlign: "center",
   },
-  microsoftButton: {
-  backgroundColor: "#5B34F2",
-  padding: 16,
-  borderRadius: 14,
-  alignItems: "center",
-},
-  btnDisabled: { opacity: 0.5 },
-  btnContent: { flexDirection: "row", alignItems: "center" },
-  msLogo: { width: 20, height: 20, marginRight: 10 },
-  buttonText: {
-  color: "#FFFFFF",
-  fontSize: 16,
-  fontWeight: "600",
-},
-  mockNote: {
-    textAlign: "center",
-    color: "#9ca3af",
-    fontSize: 12,
-    marginTop: 15,
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  microsoftIcon: {
+    width: 24,
+    height: 24,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginRight: 8,
+  },
+  iconRed: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#F25022",
+  },
+  iconGreen: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#7FBA00",
+  },
+  iconBlue: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#00A4EF",
+  },
+  iconYellow: {
+    width: 12,
+    height: 12,
+    backgroundColor: "#FFB900",
   },
 });

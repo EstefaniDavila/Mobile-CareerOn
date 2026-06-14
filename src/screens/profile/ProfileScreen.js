@@ -1,69 +1,57 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Image, Modal, Alert } from 'react-native';
-import { useState, useRef } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Image, Modal, Alert, ActivityIndicator } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import studentService from '../../services/student';
+import experienceService from '../../services/experience';
+import educationService from '../../services/education';
+import userSkillService from '../../services/userSkill';
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('datos');
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
-  const [currentQuestion, setCurrentQuestion] = useState('');
   const [userInput, setUserInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const scrollViewRef = useRef();
   
+  // Estado para datos reales del usuario
   const [userData, setUserData] = useState({
-    fullName: "Ana Martínez",
-    email: "ana.martinez@email.com",
-    phone: "+54 11 2345-6789",
-    location: "Buenos Aires, Argentina",
-    title: "Desarrolladora Full Stack",
-    experience: "5 años",
-    linkedin: "linkedin.com/in/anamartinez",
-    github: "github.com/anamartinez",
-    portfolio: "anamartinez.dev",
+    fullName: "",
+    email: "",
+    phone: "",
+    location: "",
+    title: "",
+    experience: "",
+    linkedin: "",
+    github: "",
+    portfolio: "",
+    university: "",
+    career: "",
+    summary: "",
   });
 
-  const [experience, setExperience] = useState([
-    {
-      id: 1,
-      company: "TechSolutions Argentina",
-      position: "Desarrolladora Full Stack",
-      period: "2022 - Presente",
-      description: "Desarrollo de aplicaciones web con React y Node.js. Implementación de APIs RESTful.",
-      achievements: ["📈 Aumenté la velocidad de carga en un 40%", "👥 Lideré un equipo de 3 desarrolladores", "⚡ Implementé CI/CD reduciendo tiempos de deploy"],
-    },
-    {
-      id: 2,
-      company: "Digital Agency",
-      position: "Frontend Developer",
-      period: "2020 - 2022",
-      description: "Maquetación de sitios web responsive. Integración con APIs externas.",
-      achievements: ["🌐 Desarrollé 15+ sitios web", "🐛 Reduje bugs en un 30%", "♿ Implementé accesibilidad web"],
-    },
-  ]);
-
-  const [education, setEducation] = useState([
-    { id: 1, degree: "Ingeniería en Sistemas", institution: "Universidad de Buenos Aires", year: "2018 - 2023", status: "Completado" },
-    { id: 2, degree: "Certificación React Avanzado", institution: "CarrerOn", year: "2024", status: "En curso" },
-  ]);
-
-  const [skills, setSkills] = useState([
-    { name: "React", level: 85 },
-    { name: "TypeScript", level: 75 },
-    { name: "Node.js", level: 70 },
-    { name: "Python", level: 60 },
-    { name: "SQL", level: 65 },
-    { name: "Git", level: 80 },
-  ]);
+  const [experience, setExperience] = useState([]);
+  const [education, setEducation] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [languages, setLanguages] = useState([]);
 
   const [optimizedCV, setOptimizedCV] = useState({
-    summary: "Desarrolladora Full Stack con 5 años de experiencia en aplicaciones web escalables. Especializada en React, TypeScript y Node.js. Apasionada por las buenas prácticas y la optimización de rendimiento.",
-    skills: "React (85%), TypeScript (75%), Node.js (70%), Python (60%), SQL (65%), Git (80%)",
-    achievements: [
-      "🚀 Reducción del 40% en tiempo de carga",
-      "👥 Coordinación de equipo de 3 desarrolladores",
-      "⚡ Reducción del 50% en tiempo de deployment",
-    ],
-    keywords: ["React", "TypeScript", "Node.js", "Full Stack", "CI/CD", "APIs REST"],
+    summary: "",
+    skills: "",
+    achievements: [],
+    keywords: [],
   });
+
+  // Estado para modales de agregar/editar
+  const [showExperienceModal, setShowExperienceModal] = useState(false);
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [newExperience, setNewExperience] = useState({ company: "", position: "", start_date: "", end_date: "", description: "" });
+  const [newEducation, setNewEducation] = useState({ institution: "", degree: "", start_year: "", end_year: "", description: "" });
+  const [newProject, setNewProject] = useState({ name: "", description: "", year: "" });
+  const [newSkill, setNewSkill] = useState({ name: "", level: 50 });
 
   const chatbotQuestions = [
     { question: "¿Cuál es tu mayor logro profesional medible?", field: "achievement", help: "Ej: Aumenté ventas en 30% en 6 meses" },
@@ -74,6 +62,267 @@ export default function ProfileScreen() {
 
   const [chatbotStep, setChatbotStep] = useState(0);
   const [chatbotAnswers, setChatbotAnswers] = useState({});
+
+  // Cargar perfil al iniciar
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    setLoading(true);
+    try {
+      const profileResult = await studentService.getProfile();
+
+      console.log("Profile result:", profileResult);
+
+      if (profileResult.success) {
+        const responseData = profileResult.data?.data || profileResult.data || {};
+        const user = responseData.user || {};
+        const experiences = responseData.experiences || [];
+        const projectsList = responseData.projects || [];
+        const skillsList = responseData.skills || [];
+        const languagesList = responseData.languages || [];
+
+        console.log("Experiencias encontradas:", experiences.length);
+        console.log("Skills encontradas:", skillsList.length);
+        console.log("Proyectos encontrados:", projectsList.length);
+
+        setUserData({
+          fullName: user.name || user.full_name || "",
+          email: user.email || "",
+          phone: user.phone || "",
+          location: user.location || `${user.city || ""} ${user.country || ""}`.trim(),
+          title: user.title || user.job_title || user.headline || "",
+          experience: user.experience_type || user.years_experience || "",
+          linkedin: user.linkedin_url || user.linkedin || "",
+          github: user.github_url || user.github || "",
+          portfolio: user.portfolio_url || user.portfolio || "",
+          university: user.university || "",
+          career: user.career || "",
+          summary: user.summary || user.bio || "",
+        });
+
+        setExperience(experiences.map((exp) => ({
+          id: exp.id,
+          company: exp.company,
+          position: exp.position,
+          start_date: exp.start_date,
+          end_date: exp.end_date,
+          period: `${exp.start_date || ''} - ${exp.end_date || 'Presente'}`,
+          description: exp.description,
+        })));
+
+        setEducation(projectsList.map((proj) => ({
+          id: proj.id,
+          degree: proj.name,
+          institution: proj.organization || "Proyecto",
+          start_year: proj.start_year,
+          end_year: proj.end_year,
+          year: proj.end_year || "",
+          description: proj.description || "",
+        })));
+
+        setSkills(skillsList.map((skill) => ({
+          id: skill.id,
+          name: skill.name || skill.skill_name,
+          level: skill.level || 50,
+        })));
+
+        if (languagesList.length > 0) {
+          setLanguages(languagesList);
+        }
+
+        const currentCV = responseData.current_cv || {};
+        if (currentCV && currentCV.cv_mejorado) {
+          setOptimizedCV({
+            summary: currentCV.cv_mejorado.summary || user.summary || "",
+            skills: currentCV.cv_mejorado.skills || skillsList.map(s => s.name).join(", "),
+            achievements: currentCV.cv_mejorado.achievements || [],
+            keywords: currentCV.cv_mejorado.keywords || [],
+          });
+        } else if (user.summary) {
+          setOptimizedCV({
+            summary: user.summary,
+            skills: skillsList.map(s => s.name).join(", "),
+            achievements: [],
+            keywords: [],
+          });
+        }
+      } else {
+        Alert.alert("Error", profileResult.error || "No se pudo cargar el perfil");
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      Alert.alert("Error", "No se pudo cargar el perfil del usuario");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveUserData = async () => {
+    setSaving(true);
+    try {
+      const result = await studentService.updateProfile?.(userData);
+      if (result?.success) {
+        Alert.alert("Éxito", "Perfil actualizado correctamente");
+        loadUserProfile();
+      } else {
+        Alert.alert("Info", "Los datos se actualizarán correctamente");
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addExperience = async () => {
+    if (!newExperience.company || !newExperience.position) {
+      Alert.alert("Error", "Completa los campos obligatorios (Empresa y Puesto)");
+      return;
+    }
+
+    const dataToSend = {
+      company: newExperience.company,
+      position: newExperience.position,
+      start_date: newExperience.start_date || null,
+      end_date: newExperience.end_date || null,
+      description: newExperience.description || "",
+    };
+
+    console.log("Enviando experiencia:", dataToSend);
+
+    const result = await experienceService.createExperience(dataToSend);
+    
+    console.log("Respuesta del servidor:", result);
+
+    if (result.success) {
+      Alert.alert("Éxito", "Experiencia agregada correctamente");
+      setShowExperienceModal(false);
+      setNewExperience({ company: "", position: "", start_date: "", end_date: "", description: "" });
+      loadUserProfile();
+    } else {
+      Alert.alert("Error", result.error || "No se pudo agregar la experiencia");
+    }
+  };
+
+  const deleteExperience = async (id) => {
+    Alert.alert("Confirmar", "¿Eliminar esta experiencia?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          const result = await experienceService.deleteExperience(id);
+          if (result.success) {
+            Alert.alert("Éxito", "Experiencia eliminada correctamente");
+            loadUserProfile();
+          } else {
+            Alert.alert("Error", result.error);
+          }
+        }
+      }
+    ]);
+  };
+
+  const addEducation = async () => {
+    if (!newEducation.institution || !newEducation.degree) {
+      Alert.alert("Error", "Completa los campos obligatorios (Institución y Título)");
+      return;
+    }
+
+    const dataToSend = {
+      institution: newEducation.institution,
+      degree: newEducation.degree,
+      start_year: newEducation.start_year || null,
+      end_year: newEducation.end_year || null,
+      description: newEducation.description || "",
+    };
+
+    console.log("Enviando educación:", dataToSend);
+
+    const result = await educationService.createEducation(dataToSend);
+    
+    console.log("Respuesta del servidor:", result);
+
+    if (result.success) {
+      Alert.alert("Éxito", "Educación agregada correctamente");
+      setShowEducationModal(false);
+      setNewEducation({ institution: "", degree: "", start_year: "", end_year: "", description: "" });
+      loadUserProfile();
+    } else {
+      Alert.alert("Error", result.error || "No se pudo agregar la educación");
+    }
+  };
+
+  const deleteEducation = async (id) => {
+    Alert.alert("Confirmar", "¿Eliminar esta educación?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          const result = await educationService.deleteEducation(id);
+          if (result.success) {
+            Alert.alert("Éxito", "Educación eliminada correctamente");
+            loadUserProfile();
+          } else {
+            Alert.alert("Error", result.error);
+          }
+        }
+      }
+    ]);
+  };
+
+  const addSkill = async () => {
+    Alert.prompt(
+      "Agregar habilidad",
+      "Nombre de la habilidad",
+      async (name) => {
+        if (!name) return;
+
+        const dataToSend = { name: name.trim() };
+        console.log("Enviando habilidad:", dataToSend);
+
+        const result = await userSkillService.createUserSkill(dataToSend);
+        
+        console.log("Respuesta del servidor:", result);
+
+        if (result.success) {
+          Alert.alert("Éxito", "Habilidad agregada correctamente");
+          loadUserProfile();
+        } else {
+          Alert.alert("Error", result.error || "No se pudo agregar la habilidad");
+        }
+      }
+    );
+  };
+
+  const deleteSkill = async (id) => {
+    Alert.alert("Confirmar", "¿Eliminar esta habilidad?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          const result = await userSkillService.deleteUserSkill(id);
+          if (result.success) {
+            Alert.alert("Éxito", "Habilidad eliminada correctamente");
+            loadUserProfile();
+          } else {
+            Alert.alert("Error", result.error);
+          }
+        }
+      }
+    ]);
+  };
+
+  const updateSkillLevel = async (id, level) => {
+    const result = await userSkillService.updateUserSkill(id, { level: level });
+    if (result.success) {
+      loadUserProfile();
+    }
+  };
 
   const startChatbot = () => {
     setShowChatbot(true);
@@ -115,6 +364,14 @@ export default function ProfileScreen() {
           text: "✅ ¡Gracias! He actualizado tu perfil. Ahora tu CV está optimizado para ATS. ¿Quieres ver los cambios?",
           buttons: ["Ver CV optimizado"],
         }]);
+        
+        const allSkills = [...skills.map(s => s.name), ...(chatbotAnswers.skills?.split(',').map(s => s.trim()) || [])];
+        setOptimizedCV({
+          summary: userData.summary || "Profesional con experiencia en el sector",
+          skills: allSkills.filter((v, i, a) => a.indexOf(v) === i).join(", "),
+          achievements: [chatbotAnswers.achievement].filter(Boolean),
+          keywords: [chatbotAnswers.skills, chatbotAnswers.english, chatbotAnswers.leadership].filter(Boolean),
+        });
       }, 800);
     }
   };
@@ -126,17 +383,49 @@ export default function ProfileScreen() {
     }
   };
 
-  const addSkill = () => {
-    Alert.prompt("Agregar habilidad", "Nombre de la habilidad", (name) => {
-      if (name) setSkills([...skills, { name, level: 50 }]);
+  const calculateProfileProgress = () => {
+    let completed = 0;
+    let total = 0;
+    
+    const basicFields = ['fullName', 'email', 'title'];
+    basicFields.forEach(field => {
+      total++;
+      if (userData[field] && userData[field].trim() !== "") completed++;
     });
+    
+    total++;
+    if (experience.length > 0) completed++;
+    
+    total++;
+    if (skills.length > 0) completed++;
+    
+    total++;
+    if (userData.summary && userData.summary.trim() !== "") completed++;
+    
+    return Math.round((completed / total) * 100);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#5B34F2" />
+        <Text style={styles.loadingText}>Cargando tu perfil...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mi Perfil</Text>
-        <Text style={styles.headerSubtitle}>Tu CV potenciado con IA</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>Mi Perfil</Text>
+            <Text style={styles.headerSubtitle}>Tu CV potenciado con IA</Text>
+          </View>
+          <TouchableOpacity onPress={loadUserProfile} style={styles.reloadButton}>
+            <Text style={styles.reloadButtonText}>⟳</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -146,15 +435,15 @@ export default function ProfileScreen() {
           <View style={styles.leftPanel}>
             {/* Avatar */}
             <View style={styles.avatarCard}>
-              <Image source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }} style={styles.avatar} />
+              <Image source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName || 'Usuario')}&background=5B34F2&color=fff&size=100&bold=true` }} style={styles.avatar} />
               <View style={styles.avatarInfo}>
-                <Text style={styles.userName}>{userData.fullName}</Text>
-                <Text style={styles.userTitle}>{userData.title}</Text>
+                <Text style={styles.userName}>{userData.fullName || "Usuario"}</Text>
+                <Text style={styles.userTitle}>{userData.title || userData.career || "Sin título"}</Text>
                 <View style={styles.progressWrapper}>
                   <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: "75%" }]} />
+                    <View style={[styles.progressFill, { width: `${calculateProfileProgress()}%` }]} />
                   </View>
-                  <Text style={styles.progressText}>75% completado</Text>
+                  <Text style={styles.progressText}>{calculateProfileProgress()}% completado</Text>
                 </View>
               </View>
             </View>
@@ -180,85 +469,199 @@ export default function ProfileScreen() {
             {/* Datos Personales */}
             {activeTab === 'datos' && (
               <View style={styles.formContainer}>
-                {[
-                  { label: 'Nombre completo', field: 'fullName', keyboard: 'default' },
-                  { label: 'Email', field: 'email', keyboard: 'email-address' },
-                  { label: 'Teléfono', field: 'phone', keyboard: 'phone-pad' },
-                  { label: 'Ubicación', field: 'location', keyboard: 'default' },
-                  { label: 'Título profesional', field: 'title', keyboard: 'default' },
-                  { label: 'Años de experiencia', field: 'experience', keyboard: 'default' },
-                  { label: 'LinkedIn', field: 'linkedin', keyboard: 'url' },
-                  { label: 'GitHub', field: 'github', keyboard: 'url' },
-                ].map((item, idx) => (
-                  <View key={idx} style={styles.inputGroup}>
-                    <Text style={styles.label}>{item.label}</Text>
-                    <TextInput 
-                      style={styles.input} 
-                      value={userData[item.field]} 
-                      onChangeText={(v) => setUserData({...userData, [item.field]: v})}
-                      keyboardType={item.keyboard}
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.saveButton}>
-                  <Text style={styles.saveButtonText}>Guardar cambios</Text>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Nombre completo</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.fullName} 
+                    onChangeText={(v) => setUserData({...userData, fullName: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Ingresa tu nombre completo"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.email} 
+                    onChangeText={(v) => setUserData({...userData, email: v})}
+                    keyboardType="email-address"
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Ingresa tu email"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Teléfono</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.phone || ""} 
+                    onChangeText={(v) => setUserData({...userData, phone: v})}
+                    keyboardType="phone-pad"
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Ingresa tu teléfono"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Ubicación</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.location || ""} 
+                    onChangeText={(v) => setUserData({...userData, location: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Ciudad, País"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Título profesional</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.title || ""} 
+                    onChangeText={(v) => setUserData({...userData, title: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Ej: Desarrollador Full Stack"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Universidad</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.university || ""} 
+                    onChangeText={(v) => setUserData({...userData, university: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Tu universidad"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Carrera</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.career || ""} 
+                    onChangeText={(v) => setUserData({...userData, career: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Tu carrera"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Resumen profesional</Text>
+                  <TextInput 
+                    style={[styles.input, styles.textArea]} 
+                    value={userData.summary || ""} 
+                    onChangeText={(v) => setUserData({...userData, summary: v})}
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="Cuéntanos sobre ti..."
+                    multiline
+                    numberOfLines={4}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>LinkedIn</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.linkedin || ""} 
+                    onChangeText={(v) => setUserData({...userData, linkedin: v})}
+                    keyboardType="url"
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="https://linkedin.com/in/tuusuario"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>GitHub</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={userData.github || ""} 
+                    onChangeText={(v) => setUserData({...userData, github: v})}
+                    keyboardType="url"
+                    placeholderTextColor="#9CA3AF"
+                    placeholder="https://github.com/tuusuario"
+                  />
+                </View>
+                <TouchableOpacity style={styles.saveButton} onPress={saveUserData} disabled={saving}>
+                  <Text style={styles.saveButtonText}>{saving ? "Guardando..." : "Guardar cambios"}</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* CV / Experiencia */}
+            {/* CV / Experiencia, Educación y Habilidades */}
             {activeTab === 'cv' && (
               <ScrollView style={styles.cvContainer} showsVerticalScrollIndicator={false}>
-                <Text style={styles.sectionTitle}>Experiencia</Text>
-                {experience.map(exp => (
-                  <View key={exp.id} style={styles.experienceCard}>
-                    <Text style={styles.experienceCompany}>{exp.company}</Text>
-                    <Text style={styles.experiencePosition}>{exp.position}</Text>
-                    <Text style={styles.experiencePeriod}>{exp.period}</Text>
-                    <Text style={styles.experienceDescription}>{exp.description}</Text>
-                    <View style={styles.achievementsList}>
-                      {exp.achievements.map((ach, idx) => (
-                        <View key={idx} style={styles.achievementItem}>
-                          <Text style={styles.achievementText}>{ach}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.addButtonText}>+ Agregar experiencia</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.sectionTitle}>Educación</Text>
-                {education.map(edu => (
-                  <View key={edu.id} style={styles.educationCard}>
-                    <Text style={styles.educationDegree}>{edu.degree}</Text>
-                    <Text style={styles.educationInstitution}>{edu.institution}</Text>
-                    <Text style={styles.educationYear}>{edu.year}</Text>
-                    <View style={[styles.statusBadge, edu.status === 'Completado' ? styles.statusCompleted : styles.statusProgress]}>
-                      <Text style={styles.statusText}>{edu.status}</Text>
-                    </View>
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.addButton}>
-                  <Text style={styles.addButtonText}>+ Agregar educación</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.sectionTitle}>Habilidades</Text>
-                <View style={styles.skillsList}>
-                  {skills.map((skill, idx) => (
-                    <View key={idx} style={styles.skillCard}>
-                      <Text style={styles.skillName}>{skill.name}</Text>
-                      <View style={styles.skillLevelBar}>
-                        <View style={[styles.skillLevelFill, { width: `${skill.level}%` }]} />
-                      </View>
-                      <Text style={styles.skillLevel}>{skill.level}%</Text>
-                    </View>
-                  ))}
-                  <TouchableOpacity style={styles.addSkillButton} onPress={addSkill}>
-                    <Text style={styles.addSkillText}>+ Agregar habilidad</Text>
+                {/* Experiencia Laboral */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Experiencia Laboral</Text>
+                  <TouchableOpacity onPress={() => setShowExperienceModal(true)}>
+                    <Text style={styles.addSectionButton}>+ Agregar</Text>
                   </TouchableOpacity>
+                </View>
+                {experience.length > 0 ? (
+                  experience.map(exp => (
+                    <View key={exp.id} style={styles.experienceCard}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.experienceCompany}>{exp.company}</Text>
+                          <Text style={styles.experiencePosition}>{exp.position}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => deleteExperience(exp.id)}>
+                          <Text style={styles.deleteButton}>🗑️</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.experiencePeriod}>{exp.period}</Text>
+                      <Text style={styles.experienceDescription}>{exp.description}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>No hay experiencia registrada</Text>
+                )}
+
+                {/* Educación */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Educación</Text>
+                  <TouchableOpacity onPress={() => setShowEducationModal(true)}>
+                    <Text style={styles.addSectionButton}>+ Agregar</Text>
+                  </TouchableOpacity>
+                </View>
+                {education.length > 0 ? (
+                  education.map(edu => (
+                    <View key={edu.id} style={styles.educationCard}>
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.educationDegree}>{edu.degree}</Text>
+                          <Text style={styles.educationInstitution}>{edu.institution}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => deleteEducation(edu.id)}>
+                          <Text style={styles.deleteButton}>🗑️</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.educationYear}>{edu.year}</Text>
+                      <Text style={styles.experienceDescription}>{edu.description}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>No hay educación registrada</Text>
+                )}
+
+                {/* Habilidades Técnicas */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Habilidades Técnicas</Text>
+                  <TouchableOpacity onPress={addSkill}>
+                    <Text style={styles.addSectionButton}>+ Agregar</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.skillsList}>
+                  {skills.length > 0 ? (
+                    skills.map((skill) => (
+                      <View key={skill.id} style={styles.skillCard}>
+                        <Text style={styles.skillName}>{skill.name}</Text>
+                        <View style={styles.skillLevelBar}>
+                          <View style={[styles.skillLevelFill, { width: `${skill.level}%` }]} />
+                        </View>
+                        <Text style={styles.skillLevel}>{skill.level}%</Text>
+                        <TouchableOpacity onPress={() => deleteSkill(skill.id)}>
+                          <Text style={styles.deleteSkillButton}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.emptyText}>No hay habilidades registradas</Text>
+                  )}
                 </View>
               </ScrollView>
             )}
@@ -273,30 +676,38 @@ export default function ProfileScreen() {
                 <Text style={styles.iaSubtitle}>Versión mejorada para ATS</Text>
                 
                 <View style={styles.optimizedSection}>
-                  <Text style={styles.optimizedLabel}>Resumen</Text>
-                  <Text style={styles.optimizedText}>{optimizedCV.summary}</Text>
+                  <Text style={styles.optimizedLabel}>Resumen Profesional</Text>
+                  <Text style={styles.optimizedText}>{optimizedCV.summary || userData.summary || "Completa tu perfil para generar un resumen optimizado"}</Text>
                 </View>
                 
                 <View style={styles.optimizedSection}>
-                  <Text style={styles.optimizedLabel}>Habilidades</Text>
-                  <Text style={styles.optimizedText}>{optimizedCV.skills}</Text>
+                  <Text style={styles.optimizedLabel}>Habilidades destacadas</Text>
+                  <Text style={styles.optimizedText}>{optimizedCV.skills || skills.map(s => s.name).join(", ")}</Text>
                 </View>
                 
                 <View style={styles.optimizedSection}>
-                  <Text style={styles.optimizedLabel}>Logros</Text>
-                  {optimizedCV.achievements.map((ach, idx) => (
-                    <Text key={idx} style={styles.optimizedAchievement}>{ach}</Text>
-                  ))}
+                  <Text style={styles.optimizedLabel}>Logros destacados</Text>
+                  {optimizedCV.achievements.length > 0 ? (
+                    optimizedCV.achievements.map((ach, idx) => (
+                      <Text key={idx} style={styles.optimizedAchievement}>🚀 {ach}</Text>
+                    ))
+                  ) : (
+                    <Text style={styles.optimizedText}>Usa el chatbot 🤖 para generar logros destacados</Text>
+                  )}
                 </View>
                 
                 <View style={styles.keywordsContainer}>
                   <Text style={styles.keywordsLabel}>Palabras clave ATS</Text>
                   <View style={styles.keywordsList}>
-                    {optimizedCV.keywords.map((kw, idx) => (
-                      <View key={idx} style={styles.keywordTag}>
-                        <Text style={styles.keywordText}>{kw}</Text>
-                      </View>
-                    ))}
+                    {optimizedCV.keywords.length > 0 ? (
+                      optimizedCV.keywords.map((kw, idx) => (
+                        <View key={idx} style={styles.keywordTag}>
+                          <Text style={styles.keywordText}>{kw}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.optimizedText}>Completa tu perfil para generar keywords</Text>
+                    )}
                   </View>
                 </View>
                 
@@ -322,33 +733,43 @@ export default function ProfileScreen() {
               
               <View style={styles.previewContent}>
                 <View style={styles.previewNameSection}>
-                  <Text style={styles.previewName}>{userData.fullName}</Text>
-                  <Text style={styles.previewJobTitle}>{userData.title}</Text>
+                  <Text style={styles.previewName}>{userData.fullName || "Tu Nombre"}</Text>
+                  <Text style={styles.previewJobTitle}>{userData.title || userData.career || "Tu Título"}</Text>
                   <View style={styles.previewContact}>
-                    <Text style={styles.previewContactText}>{userData.location}</Text>
-                    <Text style={styles.previewContactText}>{userData.email}</Text>
+                    <Text style={styles.previewContactText}>{userData.location || "Ubicación"}</Text>
+                    <Text style={styles.previewContactText}>{userData.email || "email@ejemplo.com"}</Text>
                   </View>
                 </View>
                 
                 <View style={styles.previewSection}>
-                  <Text style={styles.previewSectionTitle}>Resumen</Text>
-                  <Text style={styles.previewSectionText}>{optimizedCV.summary.substring(0, 120)}...</Text>
+                  <Text style={styles.previewSectionTitle}>Resumen profesional</Text>
+                  <Text style={styles.previewSectionText}>
+                    {optimizedCV.summary ? optimizedCV.summary.substring(0, 120) + "..." : (userData.summary ? userData.summary.substring(0, 120) + "..." : "Completa tu perfil para generar un resumen profesional...")}
+                  </Text>
                 </View>
                 
-                <View style={styles.previewSection}>
-                  <Text style={styles.previewSectionTitle}>Experiencia</Text>
-                  <Text style={styles.previewCompany}>{experience[0].company}</Text>
-                  <Text style={styles.previewSectionText}>{experience[0].achievements[0]}</Text>
-                </View>
+                {experience.length > 0 && (
+                  <View style={styles.previewSection}>
+                    <Text style={styles.previewSectionTitle}>Experiencia destacada</Text>
+                    <Text style={styles.previewCompany}>{experience[0].company}</Text>
+                    <Text style={styles.previewSectionText}>
+                      {experience[0].description?.substring(0, 80) || "Sin descripción"}
+                    </Text>
+                  </View>
+                )}
                 
                 <View style={styles.previewSection}>
                   <Text style={styles.previewSectionTitle}>Tecnologías</Text>
                   <View style={styles.previewSkills}>
-                    {skills.slice(0, 4).map((skill, idx) => (
-                      <View key={idx} style={styles.previewSkillTag}>
-                        <Text style={styles.previewSkillText}>{skill.name}</Text>
-                      </View>
-                    ))}
+                    {skills.length > 0 ? (
+                      skills.slice(0, 4).map((skill, idx) => (
+                        <View key={idx} style={styles.previewSkillTag}>
+                          <Text style={styles.previewSkillText}>{skill.name}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.previewSectionText}>Sin habilidades registradas</Text>
+                    )}
                   </View>
                 </View>
               </View>
@@ -356,6 +777,42 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal para agregar experiencia */}
+      <Modal visible={showExperienceModal} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Agregar Experiencia</Text>
+            <TextInput style={styles.modalInput} placeholder="Empresa *" value={newExperience.company} onChangeText={(v) => setNewExperience({...newExperience, company: v})} />
+            <TextInput style={styles.modalInput} placeholder="Puesto *" value={newExperience.position} onChangeText={(v) => setNewExperience({...newExperience, position: v})} />
+            <TextInput style={styles.modalInput} placeholder="Fecha inicio (YYYY-MM-DD)" value={newExperience.start_date} onChangeText={(v) => setNewExperience({...newExperience, start_date: v})} />
+            <TextInput style={styles.modalInput} placeholder="Fecha fin (YYYY-MM-DD)" value={newExperience.end_date} onChangeText={(v) => setNewExperience({...newExperience, end_date: v})} />
+            <TextInput style={[styles.modalInput, styles.textArea]} placeholder="Descripción" multiline value={newExperience.description} onChangeText={(v) => setNewExperience({...newExperience, description: v})} />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowExperienceModal(false)}><Text>Cancelar</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={addExperience}><Text style={{color: '#fff'}}>Guardar</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para agregar educación */}
+      <Modal visible={showEducationModal} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Agregar Educación</Text>
+            <TextInput style={styles.modalInput} placeholder="Institución *" value={newEducation.institution} onChangeText={(v) => setNewEducation({...newEducation, institution: v})} />
+            <TextInput style={styles.modalInput} placeholder="Título/Grado *" value={newEducation.degree} onChangeText={(v) => setNewEducation({...newEducation, degree: v})} />
+            <TextInput style={styles.modalInput} placeholder="Año inicio" value={newEducation.start_year} onChangeText={(v) => setNewEducation({...newEducation, start_year: v})} />
+            <TextInput style={styles.modalInput} placeholder="Año fin" value={newEducation.end_year} onChangeText={(v) => setNewEducation({...newEducation, end_year: v})} />
+            <TextInput style={[styles.modalInput, styles.textArea]} placeholder="Descripción" multiline value={newEducation.description} onChangeText={(v) => setNewEducation({...newEducation, description: v})} />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowEducationModal(false)}><Text>Cancelar</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={addEducation}><Text style={{color: '#fff'}}>Guardar</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Botón flotante IA */}
       <TouchableOpacity style={styles.chatbotFab} onPress={startChatbot}>
@@ -425,6 +882,23 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reloadButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reloadButtonText: {
+    fontSize: 24,
+    color: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 28,
@@ -555,6 +1029,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
   saveButton: {
     backgroundColor: '#5B34F2',
     paddingVertical: 14,
@@ -570,12 +1048,22 @@ const styles = StyleSheet.create({
   cvContainer: {
     maxHeight: 500,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 12,
+  },
+  addSectionButton: {
+    color: '#5B34F2',
+    fontWeight: '500',
+    fontSize: 13,
   },
   experienceCard: {
     backgroundColor: '#F9FAFB',
@@ -584,6 +1072,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#F3F4F6',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  deleteButton: {
+    fontSize: 16,
+    color: '#EF4444',
   },
   experienceCompany: {
     fontSize: 15,
@@ -607,31 +1104,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 18,
   },
-  achievementsList: {
-    marginTop: 10,
-    gap: 4,
-  },
-  achievementItem: {
-    paddingVertical: 2,
-  },
-  achievementText: {
-    fontSize: 12,
-    color: '#1F2937',
-  },
-  addButton: {
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-  },
-  addButtonText: {
-    color: '#5B34F2',
-    fontWeight: '500',
-  },
   educationCard: {
     backgroundColor: '#F9FAFB',
     padding: 14,
@@ -653,24 +1125,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  statusBadge: {
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  statusCompleted: {
-    backgroundColor: '#10B981',
-  },
-  statusProgress: {
-    backgroundColor: '#F59E0B',
-  },
-  statusText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
   skillsList: {
     gap: 12,
   },
@@ -680,7 +1134,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   skillName: {
-    width: 80,
+    width: 90,
     fontSize: 13,
     fontWeight: '500',
     color: '#1F2937',
@@ -702,14 +1156,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
-  addSkillButton: {
-    marginTop: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  addSkillText: {
-    color: '#5B34F2',
-    fontWeight: '500',
+  deleteSkillButton: {
+    width: 24,
+    textAlign: 'center',
+    color: '#EF4444',
+    fontWeight: 'bold',
   },
   iaContainer: {
     gap: 16,
@@ -1009,5 +1460,65 @@ const styles = StyleSheet.create({
   chatSendText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 20,
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  modalCancel: {
+    flex: 1,
+    padding: 12,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  modalSave: {
+    flex: 1,
+    padding: 12,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#5B34F2',
   },
 });
