@@ -33,9 +33,9 @@ export const MASCOTAS = {
 
 export const ETAPAS = {
   HUEVO: { id: 1, name: 'Huevo', emoji: '🥚', minPoints: 0, color: '#9CA3AF' },
-  BEBE: { id: 2, name: 'Bebé', emoji: '🐣', minPoints: 100, color: '#F59E0B' },
-  JOVEN: { id: 3, name: 'Joven', emoji: '🌟', minPoints: 300, color: '#5B34F2' },
-  ADULTO: { id: 4, name: 'Adulto', emoji: '⭐', minPoints: 600, color: '#0F6C7A' },
+  BEBE: { id: 2, name: 'Bebé', emoji: '🐣', minPoints: 200, color: '#F59E0B' },
+  JOVEN: { id: 3, name: 'Joven', emoji: '🌟', minPoints: 500, color: '#5B34F2' },
+  ADULTO: { id: 4, name: 'Adulto', emoji: '⭐', minPoints: 800, color: '#0F6C7A' },
   LEGENDARIO: { id: 5, name: 'Legendario', emoji: '✨', minPoints: 1000, color: '#F25F63' },
 };
 
@@ -47,6 +47,20 @@ export const getMascotaEmoji = (tipo, etapaId) => {
     lion: { 1: '🥚', 2: '🦁', 3: '🦁', 4: '🦁', 5: '👑🦁' },
   };
   return emojis[tipo]?.[etapaId] || '🥚';
+};
+
+export const getMascotaImage = (tipo, etapaId, status = 'normal') => {
+  // Solo el león a partir de Bebé (etapa 2) tiene imagen real en esta fase del desarrollo
+  if (tipo === 'lion' && etapaId >= 2) {
+    if (status === 'hungry') {
+      return require('../../../assets/images/leon-hmbre.png');
+    }
+    if (status === 'sleeping') {
+      return require('../../../assets/images/leon-dormido.png');
+    }
+    return require('../../../assets/images/leon_mascota.png');
+  }
+  return null;
 };
 
 export const FRASES = {

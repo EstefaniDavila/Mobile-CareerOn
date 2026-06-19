@@ -1,9 +1,12 @@
 import {Text, View, ScrollView,TouchableOpacity, Alert} from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import userSkillService from "../../services/userSkill";
 import skillService from "../../services/skill";
 import styles from "./components/components";
 import CourseModal from "./components/CourseModal";
+import { useMascota } from "../../components/mascota/MascotaProvider";
 
 
 export default function SkillsScreen() {
@@ -24,6 +27,19 @@ export default function SkillsScreen() {
 
   const [isLoading, setIsLoading] =
     useState(false);
+
+  const [classProgress, setClassProgress] =
+    useState({}); // { skillId: numCompletedClasses }
+    
+  const { notifySkills } = useMascota();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (notifySkills) {
+        notifySkills();
+      }
+    }, [notifySkills])
+  );
 
   useEffect(() => {
     loadData();
@@ -82,6 +98,28 @@ export default function SkillsScreen() {
     }
   };
 
+  // Cargar progreso local de clases completadas
+  const loadClassProgress = async (skills) => {
+    const progress = {};
+    for (const skill of skills) {
+      try {
+        const data = await AsyncStorage.getItem(`@completed_classes_${skill.id}`);
+        if (data) {
+          progress[skill.id] = JSON.parse(data).length;
+        }
+      } catch (e) {
+        // ignorar
+      }
+    }
+    setClassProgress(progress);
+  };
+
+  useEffect(() => {
+    if (skillsCatalog.length > 0) {
+      loadClassProgress(skillsCatalog);
+    }
+  }, [skillsCatalog, showCourseModal]);
+
   const addUserSkill = async (
     skillId
     ) => {
@@ -123,7 +161,7 @@ export default function SkillsScreen() {
   const getUserSkill = (skillId) => {
     return userSkills.find(
       (skill) =>
-        skill.skill_id === skillId
+        skill.skill_id === skillId || skill.id === skillId || skill.skill?.id === skillId
     );
   };
 
@@ -162,30 +200,27 @@ export default function SkillsScreen() {
         selectedCategory
     );
 
-  const completedCount =
-    userSkills.filter(
-      (skill) =>
-        skill.level === "advanced"
-    ).length;
+  // Contar por categoría actual usando progreso de clases
+  const getSkillRealStatus = (skill) => {
+    const userSkill = getUserSkill(skill.id);
+    const classCount = classProgress[skill.id] || 0;
+    
+    if (userSkill?.level === "advanced" || classCount >= 5) return "completed";
+    if (userSkill || classCount > 0) return "in-progress";
+    return "pending";
+  };
 
-  const inProgressCount =
-    userSkills.filter(
-      (skill) =>
-        skill.level ===
-          "beginner" ||
-        skill.level ===
-          "intermediate"
-    ).length;
+  const completedCount = skillsByCategory.filter(
+    skill => getSkillRealStatus(skill) === "completed"
+  ).length;
 
-  const totalSkills =
-    skillsByCategory.length;
+  const inProgressCount = skillsByCategory.filter(
+    skill => getSkillRealStatus(skill) === "in-progress"
+  ).length;
 
-  const pendingCount = Math.max(
-    0,
-    totalSkills -
-      completedCount -
-      inProgressCount
-  );
+  const pendingCount = skillsByCategory.filter(
+    skill => getSkillRealStatus(skill) === "pending"
+  ).length;
 
   return (
     <View style={styles.container}>
@@ -286,7 +321,7 @@ export default function SkillsScreen() {
             Ruta de aprendizaje
           </Text>
               {skillsByCategory.map((skill) => {
-                const status = getSkillStatus(skill.id);
+                const status = getSkillRealStatus(skill);
 
                 return (
                   <TouchableOpacity
@@ -427,7 +462,7 @@ export default function SkillsScreen() {
                   ((completedCount +
                     inProgressCount) /
                     Math.max(
-                      totalSkills,
+                      skillsByCategory.length,
                       1
                     )) *
                     100
@@ -449,7 +484,7 @@ export default function SkillsScreen() {
                       ((completedCount +
                         inProgressCount) /
                         Math.max(
-                          totalSkills,
+                          skillsByCategory.length,
                           1
                         )) *
                         100
@@ -541,14 +576,13 @@ export default function SkillsScreen() {
       onClose={() =>
         setShowCourseModal(false)
       }
-      onCompleteCourse={(
-        skillName,
-        courseName
-      ) => {
-        Alert.alert(
-          "Curso iniciado",
-          `${courseName} - ${skillName}`
-        );
+      onCompleteCourse={(skillId, courseName) => {
+        const existing = getUserSkill(skillId);
+        if (existing) {
+          userSkillService.updateUserSkill(existing.id || existing.skill_id, 'advanced').then(() => loadData());
+        } else {
+          userSkillService.createUserSkill({ skill_id: skillId, level: 'advanced' }).then(() => loadData());
+        }
       }}
     />
 

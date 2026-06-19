@@ -1,29 +1,49 @@
-import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Image } from 'react-native';
 import { useMascota } from './MascotaProvider';
 import { ETAPAS } from './mascotaData';
 
 export default function MascotaModal({ visible, onClose }) {
   const { 
     points, 
-    streak, 
+    streak,
+    coins,
+    careerScore,
+    userName,
+    bestMatchJob,
     currentEtapa, 
     nextEtapa, 
     pointsToNext, 
     progressToNext,
     dailyActions,
     selectedMascota,
-    currentEmoji
+    currentEmoji,
+    currentImage,
+    feedMascota,
+    sleepMascota,
+    mascotaStatus,
+    updateMascotaName,
+    isVideoDownloadEnabled,
+    toggleVideoDownload
   } = useMascota();
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
 
   const etapasList = Object.values(ETAPAS);
   const currentLevelId = currentEtapa?.id || 1;
 
   const getMessage = () => {
+    if (mascotaStatus === 'sleeping') {
+      return `¡Hola ${userName || 'Abigail'}, bienvenido! No olvides despertarme para ayudarte.`;
+    }
+    if (bestMatchJob && bestMatchJob.match_score > 80) return `¡Hay un empleo de ${bestMatchJob.title} con ${bestMatchJob.match_score}% match para ti hoy! 🎯`;
+    if (streak > 7) return `¡${streak} días de racha! ¡Eres imparable! 🔥`;
+    if (coins > 100) return `💰 Tienes ${coins} monedas. ¡Sigue acumulando!`;
     const messages = {
       1: '¡Publica algo para que pueda nacer! 🥚',
-      2: '¡Pío pío! Sigue así 🐣',
-      3: '¡Ya sé volar! Completa tu roadmap 📈',
+      2: '¡Pío pío! Sigue postulándote 🐣',
+      3: '¡Ya sé volar! Completa tu perfil 📈',
       4: '¡Soy un sabio! Tu carrera despega 🦉',
       5: '¡ERES UNA LEYENDA! 🔥',
     };
@@ -37,7 +57,41 @@ export default function MascotaModal({ visible, onClose }) {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>✨ {selectedMascota.nombre} ✨</Text>
+            {isEditingName ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 15 }}>
+                <TextInput
+                  style={{ flex: 1, fontSize: 20, fontWeight: 'bold', color: '#4F46E5', borderBottomWidth: 2, borderBottomColor: '#4F46E5', padding: 0 }}
+                  value={editNameValue}
+                  onChangeText={setEditNameValue}
+                  autoFocus
+                  maxLength={15}
+                />
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (editNameValue.trim()) {
+                      updateMascotaName(editNameValue.trim());
+                    }
+                    setIsEditingName(false);
+                  }}
+                  style={{ marginLeft: 10, backgroundColor: '#4F46E5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>Guardar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.modalTitle}>✨ {selectedMascota.nombre} ✨</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setEditNameValue(selectedMascota.nombre);
+                    setIsEditingName(true);
+                  }}
+                  style={{ marginLeft: 10, padding: 5 }}
+                >
+                  <Text style={{ fontSize: 18 }}>✏️</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -46,27 +100,72 @@ export default function MascotaModal({ visible, onClose }) {
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Mascota grande */}
             <View style={[styles.mascotaLarge, { backgroundColor: selectedMascota.color + '20' }]}>
-              <Text style={styles.mascotaLargeEmoji}>{currentEmoji}</Text>
+              {currentImage ? (
+                <Image 
+                  source={currentImage} 
+                  style={{ width: 120, height: 120, marginBottom: 10 }} 
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.mascotaLargeEmoji}>{currentEmoji}</Text>
+              )}
               <Text style={[styles.mascotaName, { color: selectedMascota.color }]}>
                 {currentEtapa?.name} {selectedMascota.nombre}
               </Text>
-              <Text style={styles.mascotaMessage}>“{getMessage()}”</Text>
+              {userName ? (
+                <Text style={styles.helloText}>¡Hola, {userName}! 👋</Text>
+              ) : null}
+              <Text style={styles.mascotaMessage}>"{getMessage()}"</Text>
             </View>
 
-            {/* Estadísticas */}
+            {/* Estadísticas REALES */}
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{points}</Text>
-                <Text style={styles.statLabel}>Puntos</Text>
+              <View style={[styles.statCard, { backgroundColor: '#FEF9C3' }]}>
+                <Text style={styles.statValue}>🪙 {coins}</Text>
+                <Text style={styles.statLabel}>Monedas</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: '#FEE2E2' }]}>
                 <Text style={styles.statValue}>🔥 {streak}</Text>
-                <Text style={styles.statLabel}>Racha</Text>
+                <Text style={styles.statLabel}>Racha días</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>🏆 {currentLevelId}</Text>
-                <Text style={styles.statLabel}>Nivel</Text>
+              <View style={[styles.statCard, { backgroundColor: '#EEF2FF' }]}>
+                <Text style={styles.statValue}>⭐ {careerScore}</Text>
+                <Text style={styles.statLabel}>Career Score</Text>
               </View>
+            </View>
+
+            {bestMatchJob && bestMatchJob.match_score > 0 && (
+              <View style={styles.matchBanner}>
+                <Text style={styles.matchBannerText}>
+                  🎯 Mejor match de hoy: {bestMatchJob.title} ({bestMatchJob.match_score}%)
+                </Text>
+                <Text style={styles.matchBannerSub}>¡Hay empleos que encajan contigo!</Text>
+              </View>
+            )}
+
+            {/* Acciones Interactivas */}
+            <View style={styles.interactiveSection}>
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]} 
+                onPress={feedMascota}
+              >
+                <Text style={styles.actionIcon}>🍎</Text>
+                <View style={styles.actionTexts}>
+                  <Text style={[styles.actionTitle, { color: '#B91C1C' }]}>Alimentar</Text>
+                  <Text style={[styles.actionSub, { color: '#EF4444' }]}>-10 M | +10 XP</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: mascotaStatus === 'sleeping' ? '#FEF9C3' : '#E0E7FF', borderColor: mascotaStatus === 'sleeping' ? '#FDE047' : '#A5B4FC' }]} 
+                onPress={sleepMascota}
+              >
+                <Text style={styles.actionIcon}>{mascotaStatus === 'sleeping' ? '☀️' : '💤'}</Text>
+                <View style={styles.actionTexts}>
+                  <Text style={[styles.actionTitle, { color: mascotaStatus === 'sleeping' ? '#A16207' : '#4338CA' }]}>{mascotaStatus === 'sleeping' ? 'Despertar' : 'Dormir'}</Text>
+                  <Text style={[styles.actionSub, { color: mascotaStatus === 'sleeping' ? '#CA8A04' : '#6366F1' }]}>{mascotaStatus === 'sleeping' ? 'Activar Racha' : 'Buenas noches'}</Text>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Barra de progreso */}
@@ -141,6 +240,31 @@ export default function MascotaModal({ visible, onClose }) {
               <Text style={styles.tipText}>• 🗺️ Termina nodos del roadmap → +30 pts</Text>
               <Text style={styles.tipText}>• 🔥 Mantén racha diaria → +10 pts extra</Text>
             </View>
+
+            {/* Configuraciones Offline */}
+            <View style={[styles.tipsSection, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD', marginTop: 15 }]}>
+              <Text style={styles.sectionTitle}>⚙️ Configuración Offline</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <View style={{ flex: 1, paddingRight: 15 }}>
+                  <Text style={{ fontWeight: 'bold', color: '#0369A1' }}>Descargar videos</Text>
+                  <Text style={{ color: '#0EA5E9', fontSize: 12, marginTop: 4 }}>Guarda los videos de las clases para cuando no tengas internet.</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={toggleVideoDownload}
+                  style={{
+                    width: 50,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: isVideoDownloadEnabled ? '#0EA5E9' : '#CBD5E1',
+                    justifyContent: 'center',
+                    alignItems: isVideoDownloadEnabled ? 'flex-end' : 'flex-start',
+                    padding: 3
+                  }}
+                >
+                  <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'white' }} />
+                </TouchableOpacity>
+              </View>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -200,6 +324,64 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 12,
     fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  helloText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4F46E5',
+    marginTop: 6,
+  },
+  matchBanner: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    alignItems: 'center',
+  },
+  matchBannerText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#047857',
+  },
+  matchBannerSub: {
+    fontSize: 12,
+    color: '#065F46',
+    marginTop: 4,
+  },
+  interactiveSection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+  },
+  actionIcon: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  actionTexts: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  actionSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',

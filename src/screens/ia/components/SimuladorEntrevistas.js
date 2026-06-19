@@ -11,11 +11,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as Speech from "expo-speech";
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import api from "../../../services/api";
+import { useMascota } from "../../../components/mascota/MascotaProvider";
 
 export default function SimuladorEntrevistas({ onBack }) {
+  const { spendCoins, isOffline, addRewards } = useMascota();
+  
   const [step, setStep] = useState("select");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
@@ -27,7 +31,34 @@ export default function SimuladorEntrevistas({ onBack }) {
   const [evaluation, setEvaluation] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
 
+  // --- CÁMARA Y MODO OFFLINE ---
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState('front');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const cameraRef = useRef(null);
+
+  const [currentOfflineQuestions, setCurrentOfflineQuestions] = useState([]);
+
   const isSendingRef = useRef(false);
+
+  const getOfflineQuestions = (category, roleName) => {
+    const q1 = `Hola, soy tu entrevistador. Esta es una entrevista de práctica para el puesto de ${roleName}. Cuéntame sobre ti y tu experiencia profesional.`;
+    
+    let q2 = "¿Cuál ha sido el mayor reto al que te has enfrentado y cómo lo resolviste?";
+    if (category === "tech") q2 = `Como ${roleName}, ¿puedes describir un problema técnico complejo que resolviste recientemente y cómo lo abordaste?`;
+    else if (category === "business") q2 = `En tu experiencia, ¿cómo priorizas tus tareas para asegurar el éxito de un proyecto?`;
+    else if (category === "health") q2 = `En el ámbito de salud, ¿cómo manejas situaciones de alto estrés con pacientes o colegas?`;
+    else if (category === "education") q2 = `Como ${roleName}, ¿qué metodologías utilizas para asegurar el aprendizaje efectivo de tus estudiantes?`;
+    else if (category === "creative") q2 = `¿Cómo manejas el feedback o las críticas hacia tu trabajo de diseño o creativo?`;
+    else if (category === "legal") q2 = `¿Cómo te mantienes actualizado con los constantes cambios en las leyes y regulaciones?`;
+    else if (category === "sales") q2 = `¿Cuál es tu estrategia principal para manejar objeciones de clientes difíciles y cerrar una venta?`;
+    else if (category === "admin") q2 = `¿Qué herramientas o métodos usas para mantener la organización y eficiencia en tus labores diarias?`;
+
+    const q3 = "¿Dónde te ves profesionalmente en 5 años y cómo este puesto te ayudará a lograrlo?";
+    
+    return [q1, q2, q3];
+  };
 
   const categories = [
     { id: "tech", name: "Tecnología", icon: "💻", color: "#EEF2FF" },
@@ -91,6 +122,15 @@ export default function SimuladorEntrevistas({ onBack }) {
       return;
     }
 
+    const hasCoins = await spendCoins(100);
+    if (!hasCoins) {
+      Alert.alert(
+        "🪙 Saldo insuficiente", 
+        "Necesitas 100 monedas para realizar una entrevista simulada. ¡Completa retos o cursos para ganar más monedas!"
+      );
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const requestData = {
@@ -109,6 +149,7 @@ export default function SimuladorEntrevistas({ onBack }) {
           `Hola, soy tu entrevistador. Esta es una entrevista de práctica para el puesto de ${selectedRoleName}. Cuéntame sobre ti y tu experiencia profesional.`;
         
         setMessages([{ role: "model", content: firstQuestion }]);
+        setIsProcessing(false); // 👈 APAGAR EL INDICADOR AQUÍ
         await speakText(firstQuestion);
         setStep("interviewing"); // 👈 Cambiar a entrevista SOLO después de éxito
       } else {
@@ -131,6 +172,29 @@ export default function SimuladorEntrevistas({ onBack }) {
     setTextInput("");
     setIsProcessing(true);
 
+    if (isOfflineMode) {
+      // MODO OFFLINE: Simular la respuesta de la IA y pasar a la siguiente pregunta
+      setTimeout(async () => {
+        const nextIndex = Math.floor(newHistory.length / 2);
+        let reply = "Gracias por tu respuesta.";
+        
+        if (nextIndex < currentOfflineQuestions.length) {
+          reply += " La siguiente pregunta es: " + currentOfflineQuestions[nextIndex];
+        } else {
+          reply += " Hemos concluido las preguntas de práctica. Puedes finalizar la entrevista.";
+        }
+
+        const newMessages = [...newHistory, { role: "model", content: reply }];
+        setMessages(newMessages);
+        await speakText(reply);
+        
+        setIsProcessing(false);
+        isSendingRef.current = false;
+      }, 1000); // Simulamos 1 segundo de "pensamiento"
+      return;
+    }
+
+    // MODO ONLINE: API Backend
     try {
       const jobContext = `Entrevista de práctica para el puesto de ${selectedRoleName} en el área de ${selectedCategory}.`;
       
@@ -159,6 +223,20 @@ export default function SimuladorEntrevistas({ onBack }) {
   const finishInterview = async () => {
     setIsProcessing(true);
     
+    if (isOfflineMode) {
+      setTimeout(() => {
+        setIsFinished(true);
+        setEvaluation({
+          score: 85,
+          feedback: "Práctica en Modo Offline finalizada. Buen trabajo grabándote. Tus respuestas detalladas se evaluarán a profundidad cuando sincronices en el Wi-Fi de la UTP.",
+          rewards: { coins: 50, xp: 100 }
+        });
+        setStep("results");
+        setIsProcessing(false);
+      }, 1000);
+      return;
+    }
+
     try {
       const jobContext = `Entrevista de práctica para el puesto de ${selectedRoleName} en el área de ${selectedCategory}`;
       
@@ -191,14 +269,46 @@ export default function SimuladorEntrevistas({ onBack }) {
     console.log("✅ Rol seleccionado:", { categoryId, roleId, roleName: role?.name });
   };
 
-  // ✅ INICIAR ENTREVISTA - SOLO SE LLAMA DESPUÉS DE SELECCIONAR ROL
-  const handleStartInterview = () => {
+  // ✅ INICIAR ENTREVISTA - ONLINE
+  const handleStartInterview = async () => {
     if (!selectedRole || !selectedRoleName) {
       Alert.alert("Error", "Por favor selecciona un puesto específico");
       return;
     }
+    
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert("Aviso", "Se requieren permisos de cámara para la experiencia completa. Ingresando en modo solo texto.");
+      }
+    }
+    
+    setIsOfflineMode(false);
     console.log("🚀 Iniciando entrevista para:", selectedRoleName);
-    startInterview(); // No cambiamos step aquí, lo hace startInterview después del éxito
+    startInterview(); 
+  };
+
+  // ✅ INICIAR ENTREVISTA - OFFLINE
+  const handleStartOfflineInterview = async () => {
+    if (!selectedRole || !selectedRoleName) {
+      Alert.alert("Error", "Por favor selecciona un puesto específico");
+      return;
+    }
+
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert("Permiso Denegado", "El modo offline requiere cámara para grabar tu práctica.");
+        return;
+      }
+    }
+
+    setIsOfflineMode(true);
+    const questions = getOfflineQuestions(selectedCategory, selectedRoleName);
+    setCurrentOfflineQuestions(questions);
+    setMessages([{ role: "model", content: questions[0] }]);
+    await speakText(questions[0]);
+    setStep("interviewing");
   };
 
   const handleReset = () => {
@@ -312,17 +422,29 @@ export default function SimuladorEntrevistas({ onBack }) {
             ))}
           </View>
 
-          {/* 👇 EL BOTÓN "INICIAR ENTREVISTA" SOLO APARECE SI YA HAY UN ROL SELECCIONADO */}
+          {/* 👇 BOTONES "INICIAR ENTREVISTA" (ONLINE Y OFFLINE) */}
           {hasSelectedRole && (
-            <TouchableOpacity 
-              style={styles.startButton} 
-              onPress={handleStartInterview}
-              disabled={isProcessing}
-            >
-              <Text style={styles.startButtonText}>
-                {isProcessing ? "Iniciando..." : `Iniciar Entrevista como ${selectedRoleName}`}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonsContainer}>
+              {!isOffline && (
+                <TouchableOpacity 
+                  style={styles.startButton} 
+                  onPress={handleStartInterview}
+                  disabled={isProcessing}
+                >
+                  <Text style={styles.startButtonText}>
+                    {isProcessing ? "Iniciando..." : `Entrevista Interactiva (Requiere Internet)`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity 
+                style={styles.offlineButton} 
+                onPress={handleStartOfflineInterview}
+                disabled={isProcessing}
+              >
+                <Text style={styles.offlineButtonText}>🎥 Grabar en Modo Offline</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <TouchableOpacity 
@@ -366,12 +488,65 @@ export default function SimuladorEntrevistas({ onBack }) {
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
           <View style={styles.interviewContainer}>
+            {/* VISTA DE CÁMARA */}
+            {permission?.granted && (
+              <View style={styles.cameraContainer}>
+                <CameraView 
+                  ref={cameraRef}
+                  style={styles.camera} 
+                  facing={facing}
+                  mode="video"
+                >
+                  <View style={styles.cameraOverlay}>
+                    <TouchableOpacity 
+                      style={styles.flipButton}
+                      onPress={() => setFacing(current => (current === 'back' ? 'front' : 'back'))}
+                    >
+                      <Text style={styles.cameraIcon}>🔄</Text>
+                    </TouchableOpacity>
+
+                    {isOfflineMode && (
+                      <TouchableOpacity 
+                        style={[styles.recordButton, isRecording && styles.recordingActive]}
+                        onPress={async () => {
+                          if (isRecording) {
+                            cameraRef.current?.stopRecording();
+                            setIsRecording(false);
+                            if (addRewards) addRewards(5, 5);
+                            Alert.alert("Éxito", "Entrevista guardada localmente en Modo Offline para ser analizada luego. ¡Tu recompensa por grabar esta entrevista es de 5 monedas! 🪙");
+                          } else {
+                            setIsRecording(true);
+                            if (cameraRef.current) {
+                              try {
+                                const video = await cameraRef.current.recordAsync();
+                                console.log("Video guardado:", video.uri);
+                              } catch (e) {
+                                console.log("Error grabando", e);
+                              }
+                            }
+                          }
+                        }}
+                      >
+                        <Text style={styles.recordButtonText}>
+                          {isRecording ? "⏹ Detener" : "⏺ Grabar"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </CameraView>
+              </View>
+            )}
+
             <View style={styles.instructionsCard}>
               <Text style={styles.instructionsIcon}>💡</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.instructionsTitle}>Entrevista para {selectedRoleName}</Text>
+                <Text style={styles.instructionsTitle}>
+                  {isOfflineMode ? "Modo Offline Activo" : `Entrevista para ${selectedRoleName}`}
+                </Text>
                 <Text style={styles.instructionsText}>
-                  Escribe tus respuestas y presiona "Enviar".
+                  {isOfflineMode 
+                    ? "Grábate respondiendo y luego escribe un resumen o pasa a la siguiente pregunta."
+                    : "Escribe tus respuestas y presiona 'Enviar'."}
                 </Text>
               </View>
             </View>
@@ -422,6 +597,12 @@ export default function SimuladorEntrevistas({ onBack }) {
                   editable={!isProcessing}
                 />
                 <TouchableOpacity
+                  style={styles.micButton}
+                  onPress={() => Alert.alert("🎤 Reconocimiento de Voz Activo", "Para responder con voz, toca la barra de texto y usa el botón del micrófono en el teclado de tu celular. ¡Es mucho más rápido y la IA transcribirá todo lo que digas de forma perfecta!")}
+                >
+                  <Text style={styles.micButtonIcon}>🎙️</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={styles.sendButton}
                   onPress={() => sendMessage(textInput)}
                   disabled={isProcessing || !textInput.trim()}
@@ -451,40 +632,70 @@ export default function SimuladorEntrevistas({ onBack }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.resultsCard}>
-          <Text style={styles.resultsIcon}>🎉</Text>
-          <Text style={styles.resultsTitle}>Entrevista Finalizada</Text>
+        {isOfflineMode ? (
+          <View style={styles.resultsCard}>
+            <Text style={styles.resultsIcon}>💾</Text>
+            <Text style={styles.resultsTitle}>Entrevista Grabada</Text>
 
-          <View style={styles.scoreSummary}>
-            <Text style={styles.scoreLabel}>Puntuación General</Text>
-            <Text style={styles.scoreValue}>
-              {evaluation?.evaluation?.score || evaluation?.score || 0}/100
-            </Text>
-          </View>
-
-          <View style={styles.feedbackSection}>
-            <Text style={styles.feedbackTitle}>💬 Feedback General</Text>
-            <Text style={styles.feedbackText}>
-              {evaluation?.evaluation?.feedback || evaluation?.feedback || "Gracias por participar."}
-            </Text>
-          </View>
-
-          <View style={styles.rewardsCard}>
-            <Text style={styles.rewardsTitle}>🎁 Recompensas obtenidas</Text>
-            <View style={styles.rewardsRow}>
-              <Text style={styles.rewardItem}>💰 +{evaluation?.rewards?.coins || 0} monedas</Text>
-              <Text style={styles.rewardItem}>⭐ +{evaluation?.rewards?.xp || 0} XP</Text>
+            <View style={styles.scoreSummary}>
+              <Text style={styles.scoreLabel}>Estado</Text>
+              <Text style={styles.scoreValue}>Modo Offline</Text>
             </View>
+
+            <View style={styles.feedbackSection}>
+              <Text style={styles.feedbackTitle}>¿Qué sigue?</Text>
+              <Text style={styles.feedbackText}>
+                Tu grabación será analizada por nuestra IA una vez que recuperes la conexión a internet. Recibirás tu feedback completo y evaluación detallada en ese momento.
+              </Text>
+              <Text style={[styles.feedbackText, { marginTop: 15, fontWeight: 'bold', color: '#16A34A', fontSize: 16, textAlign: 'center' }]}>
+                ¡Ganaste 5 monedas 🪙 por practicar hoy!
+              </Text>
+            </View>
+
+            <TouchableOpacity style={styles.restartButton} onPress={handleReset}>
+              <Text style={styles.restartButtonText}>Volver al inicio</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backToMenuButton} onPress={onBack}>
+              <Text style={styles.backToMenuText}>Volver al menú</Text>
+            </TouchableOpacity>
           </View>
+        ) : (
+          <View style={styles.resultsCard}>
+            <Text style={styles.resultsIcon}>🎉</Text>
+            <Text style={styles.resultsTitle}>Entrevista Finalizada</Text>
 
-          <TouchableOpacity style={styles.restartButton} onPress={handleReset}>
-            <Text style={styles.restartButtonText}>Practicar de nuevo</Text>
-          </TouchableOpacity>
+            <View style={styles.scoreSummary}>
+              <Text style={styles.scoreLabel}>Puntuación General</Text>
+              <Text style={styles.scoreValue}>
+                {evaluation?.evaluation?.score || evaluation?.score || 0}/100
+              </Text>
+            </View>
 
-          <TouchableOpacity style={styles.backToMenuButton} onPress={onBack}>
-            <Text style={styles.backToMenuText}>Volver al menú</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.feedbackSection}>
+              <Text style={styles.feedbackTitle}>💬 Feedback General</Text>
+              <Text style={styles.feedbackText}>
+                {evaluation?.evaluation?.feedback || evaluation?.feedback || "Gracias por participar."}
+              </Text>
+            </View>
+
+            <View style={styles.rewardsCard}>
+              <Text style={styles.rewardsTitle}>🎁 Recompensas obtenidas</Text>
+              <View style={styles.rewardsRow}>
+                <Text style={styles.rewardItem}>💰 +{evaluation?.rewards?.coins || 0} monedas</Text>
+                <Text style={styles.rewardItem}>⭐ +{evaluation?.rewards?.xp || 0} XP</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.restartButton} onPress={handleReset}>
+              <Text style={styles.restartButtonText}>Practicar de nuevo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backToMenuButton} onPress={onBack}>
+              <Text style={styles.backToMenuText}>Volver al menú</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -747,17 +958,27 @@ const styles = StyleSheet.create({
   },
   textInputContainer: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   textInput: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    maxHeight: 80,
+    minHeight: 40,
+    maxHeight: 100,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: "#1C1C1C",
+  },
+  micButton: {
+    padding: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  micButtonIcon: {
+    fontSize: 20,
   },
   sendButton: {
     backgroundColor: "#5B34F2",
@@ -855,30 +1076,92 @@ const styles = StyleSheet.create({
   tipItem: {
     fontSize: 13,
     color: "#78350F",
-    marginBottom: 8,
-    lineHeight: 18,
+    marginBottom: 6,
   },
   restartButton: {
-    backgroundColor: "#5B34F2",
+    backgroundColor: "#F3F4F6",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: "center",
     marginBottom: 12,
   },
   restartButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#4B5563",
   },
   backToMenuButton: {
-    backgroundColor: "#F3F4F6",
     paddingVertical: 14,
-    borderRadius: 12,
     alignItems: "center",
   },
   backToMenuText: {
-    fontSize: 15,
+    fontSize: 14,
+    color: "#5B34F2",
     fontWeight: "500",
-    color: "#374151",
+  },
+  // --- NUEVOS ESTILOS DE CÁMARA Y MODO OFFLINE ---
+  actionButtonsContainer: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  offlineButton: {
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  offlineButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  cameraContainer: {
+    height: 250,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#000',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    padding: 12,
+  },
+  flipButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraIcon: {
+    fontSize: 20,
+  },
+  recordButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recordingActive: {
+    backgroundColor: 'rgba(55, 65, 81, 0.9)',
+  },
+  recordButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

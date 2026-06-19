@@ -14,10 +14,12 @@ import {
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import studentService from "../../../services/student";
+import { useMascota } from "../../../components/mascota/MascotaProvider";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
+  const { notifyApplied, updateRewards } = useMascota();
   const [currentJobIndex, setCurrentJobIndex] = useState(0);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [discardedJobIds, setDiscardedJobIds] = useState(new Set());
@@ -57,6 +59,14 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
     setIsProcessingAction(false); // ✅ Resetear estado
   };
 
+  const handleUndo = () => {
+    if (currentJobIndex > 0 && !isProcessingAction) {
+      setCurrentJobIndex((prev) => prev - 1);
+      swipeAnim.setValue(0);
+      opacityAnim.setValue(1);
+    }
+  };
+
   // ✅ Función unificada para aplicar (sin animación, solo la acción)
   const executeApply = async (job) => {
     console.log("🚀 EXECUTE APPLY", job.id);
@@ -79,6 +89,23 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
       if (result.success) {
         setAppliedJobIds(prev => new Set(prev).add(jobIdNum));
         
+        // Actualizar recompensas si el backend las envió
+        if (result.data && result.data.rewards) {
+          updateRewards(result.data.rewards);
+        }
+        
+        if (result.offlineQueued) {
+          if (typeof notifyOfflineQueued === 'function') {
+            notifyOfflineQueued();
+          } else {
+            notifyApplied(); // fallback si no existe
+          }
+          Alert.alert("🎒 Postulación Guardada", `Se guardó tu postulación a ${job.title} en tu mochila. Se enviará cuando recuperes la conexión.`);
+        } else {
+          notifyApplied(); // 🎮 Notificar a la mascota
+          Alert.alert("✅ ¡Aplicación exitosa!", `Has aplicado a ${job.title} en ${job.company}`);
+        }
+        
         if (onJobAction) {
           onJobAction('save', job);
         }
@@ -86,7 +113,6 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
           onJobApplied(job, true);
         }
         
-        Alert.alert("✅ ¡Aplicación exitosa!", `Has aplicado a ${job.title} en ${job.company}`);
         goToNextJob();
       } else {
         setIsProcessingAction(false);
@@ -227,7 +253,6 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
       </View>
 
       <View style={styles.swipeContainer}>
-        {/* Siguiente carta (vista previa) */}
         {nextJob && (
           <View style={[styles.jobCard, styles.nextCard]}>
             <View style={styles.companyHeader}>
@@ -239,6 +264,14 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
                 <Text style={styles.jobTitle}>{nextJob.title}</Text>
                 <Text style={styles.companyName}>{nextJob.company}</Text>
               </View>
+            </View>
+
+            <View style={styles.jobDetails}>
+              {nextJob.match_score > 0 && (
+                <View style={[styles.detailBadge, { backgroundColor: "#D1FAE5", borderColor: "#10B981", borderWidth: 1 }]}>
+                  <Text style={{ fontSize: 13, color: "#047857", fontWeight: "bold" }}>✨ {nextJob.match_score}% Match IA</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -282,6 +315,11 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
               <Text style={styles.detailIcon}>💰</Text>
               <Text style={styles.detailText}>{currentJob.salary}</Text>
             </View>
+            {currentJob.match_score > 0 && (
+              <View style={[styles.detailBadge, { backgroundColor: "#D1FAE5", borderColor: "#10B981", borderWidth: 1 }]}>
+                <Text style={{ fontSize: 13, color: "#047857", fontWeight: "bold" }}>✨ {currentJob.match_score}% Match IA</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.description} numberOfLines={4}>
@@ -312,27 +350,48 @@ export default function JobSwiper({ jobs, onBack, onJobAction, onJobApplied }) {
 
         {/* Botones de acción */}
         <View style={styles.actionsContainer}>
+          {currentJobIndex > 0 && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.undoButton]}
+              onPress={handleUndo}
+              disabled={isApplying || isProcessingAction}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.undoButtonIcon}>↺</Text>
+              <Text style={[styles.actionButtonText, { color: "#4B5563" }]}>Volver</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.actionButton, styles.discardButton]}
             onPress={animateDiscard}
             disabled={isApplying || isProcessingAction}
             activeOpacity={0.7}
           >
-            <Text style={styles.actionButtonIcon}>✕</Text>
-            <Text style={styles.actionButtonText}>Descartar</Text>
+            <Text style={[styles.actionButtonIcon, { color: "#EF4444" }]}>✕</Text>
+            <Text style={[styles.actionButtonText, { color: "#EF4444" }]}>Descartar</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.applyButton, alreadyApplied && styles.applyButtonDisabled]}
-            onPress={animateApply}
-            disabled={isApplying || isProcessingAction || alreadyApplied}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionButtonIcon}>✓</Text>
-            <Text style={styles.actionButtonText}>
-              {alreadyApplied ? "Ya aplicaste" : "Aplicar"}
-            </Text>
-          </TouchableOpacity>
+          {alreadyApplied ? (
+            <View style={styles.appliedPill}>
+              <Text style={styles.appliedPillIcon}>✓</Text>
+              <Text style={styles.appliedPillText}>Ya aplicaste</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.applyButton]}
+              onPress={animateApply}
+              disabled={isApplying || isProcessingAction}
+              activeOpacity={0.7}
+            >
+              {isApplying ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={[styles.actionButtonIcon, { color: "#FFFFFF" }]}>✓</Text>
+              )}
+              <Text style={[styles.actionButtonText, { color: "#FFFFFF" }]}>Aplicar</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -463,6 +522,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
+    paddingTop: 0,
+    marginTop: -40,
     position: "relative",
   },
   jobCard: {
@@ -481,8 +542,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   nextCard: {
-    opacity: 0.4,
-    transform: [{ scale: 0.95 }],
+    position: "absolute",
+    opacity: 0.45,
+    transform: [{ scale: 0.94 }, { translateY: -20 }],
     zIndex: 1,
   },
   applyingOverlay: {
@@ -503,15 +565,30 @@ const styles = StyleSheet.create({
     color: "#4F46E5",
     fontWeight: "600",
   },
-  alreadyAppliedBadge: {
+  matchBadge: {
     position: "absolute",
     top: 16,
-    right: 16,
-    backgroundColor: "#10B981",
+    left: 16,
+    backgroundColor: "#D1FAE5",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     zIndex: 5,
+    borderWidth: 1,
+    borderColor: "#10B981",
+  },
+  matchBadgeText: {
+    color: "#047857",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  alreadyAppliedBadge: {
+    alignSelf: "flex-end",
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 10,
   },
   alreadyAppliedText: {
     color: "#FFFFFF",
@@ -604,11 +681,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   actionsContainer: {
+    position: "absolute",
+    bottom: 40,
+    width: "100%",
     flexDirection: "row",
     justifyContent: "center",
     gap: 24,
-    marginTop: screenHeight * 0.55,
-    paddingBottom: 20,
+    zIndex: 10,
   },
   actionButton: {
     width: 80,
@@ -632,6 +711,44 @@ const styles = StyleSheet.create({
   },
   applyButtonDisabled: {
     backgroundColor: "#9CA3AF",
+  },
+  appliedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#D1FAE5",
+    borderWidth: 2,
+    borderColor: "#10B981",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 40,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  appliedPillIcon: {
+    fontSize: 20,
+    color: "#047857",
+    fontWeight: "bold",
+  },
+  appliedPillText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#047857",
+  },
+  undoButton: {
+    backgroundColor: "#F3F4F6",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginTop: 10,
+  },
+  undoButtonIcon: {
+    fontSize: 24,
+    color: "#4B5563",
+    fontWeight: "bold",
   },
   actionButtonIcon: {
     fontSize: 32,

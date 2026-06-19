@@ -1,9 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IMPORTANTE:
-// Reemplaza 192.168.1.12 por la IP REAL de tu laptop
-const API_URL = 'http://172.27.0.1:8000/api';
+// 10.0.2.2 es la IP especial que usa el Emulador de Android para acceder al localhost de Windows
+const API_URL = 'http://10.0.2.2:8000/api';
 
 console.log('API_URL =', API_URL);
 

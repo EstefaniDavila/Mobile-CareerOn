@@ -1,8 +1,13 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator, Switch } from 'react-native';
 import { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import studentService from '../../services/student';
+import { useMascota } from '../../components/mascota/MascotaProvider';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
+  const { isOffline, toggleDemoOfflineMode } = useMascota();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -74,6 +79,33 @@ export default function ProfileScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Cerrar Sesión", "¿Estás seguro de que deseas salir?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sí, Salir", style: "destructive", onPress: async () => {
+          try {
+            await AsyncStorage.multiRemove([
+              '@user', 
+              '@auth_token', 
+              '@is_demo_offline',
+              '@mascota_selected',
+              '@mascota_hasSelected',
+              '@mascota_daily',
+              '@cached_jobs',
+              '@cached_applications',
+              '@offline_queue_applications'
+            ]);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          } catch (e) {
+            console.error("Error al cerrar sesión", e);
+          }
+      }}
+    ]);
   };
 
   if (loading) {
@@ -231,8 +263,25 @@ export default function ProfileScreen() {
               />
             </View>
 
+            <View style={[styles.inputGroup, styles.switchContainer]}>
+              <View>
+                <Text style={styles.label}>Simular Modo Offline</Text>
+                <Text style={styles.helperText}>Activa esto para probar la app sin conexión a internet.</Text>
+              </View>
+              <Switch 
+                value={isOffline} 
+                onValueChange={toggleDemoOfflineMode} 
+                trackColor={{ false: "#D1D5DB", true: "#818CF8" }}
+                thumbColor={isOffline ? "#5B34F2" : "#f4f3f4"}
+              />
+            </View>
+
             <TouchableOpacity style={styles.saveButton} onPress={saveUserData} disabled={saving}>
               <Text style={styles.saveButtonText}>{saving ? "Guardando..." : "Guardar cambios"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -362,6 +411,33 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 15,
+  },
+  logoutButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  logoutButtonText: {
+    color: '#EF4444',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+    maxWidth: 220,
   },
   loadingContainer: {
     flex: 1,

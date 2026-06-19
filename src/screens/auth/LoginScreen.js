@@ -20,8 +20,8 @@ export default function LoginScreen({ navigation }) {
     
     try {
       const mockUser = {
-        email: "estudiante0@utp.edu.pe",
-        name: "Estudiante Demo",
+        email: "u24230547@utp.edu.pe",
+        name: "Abigail Guerra",
         microsoft_id: "mock_student_123"
       };
 
@@ -43,6 +43,7 @@ export default function LoginScreen({ navigation }) {
         
         // Guardar datos del usuario
         await AsyncStorage.setItem("@user", JSON.stringify(response.data.user));
+        await AsyncStorage.setItem("@is_demo_offline", "false");
 
         // Solo manejamos estudiantes
         if (response.data.user.type === "Pending") {
@@ -61,6 +62,26 @@ export default function LoginScreen({ navigation }) {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOfflineLogin = async () => {
+    try {
+      const userRaw = await AsyncStorage.getItem("@user");
+      if (userRaw) {
+        console.log("Entrando con caché local offline");
+        await AsyncStorage.setItem("@is_demo_offline", "true");
+        const user = JSON.parse(userRaw);
+        if (user.type === "Pending") {
+          navigation.replace("Onboarding");
+        } else {
+          navigation.replace("MainTabs");
+        }
+      } else {
+        Alert.alert("Sin datos", "No hay datos de sesión guardados. Por favor, inicia sesión online al menos una vez.");
+      }
+    } catch (error) {
+      console.log("Error entrando offline", error);
     }
   };
 

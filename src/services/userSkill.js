@@ -35,7 +35,7 @@ const userSkillService = {
     try {
        const response = await api.post(
       '/user-skill',
-      data
+      skillData
     );
 
       return {

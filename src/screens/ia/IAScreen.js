@@ -1,10 +1,18 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import OptimizarCV from './components/OptimizarCV';
 import SimuladorEntrevistas from './components/SimuladorEntrevistas';
+import { useMascota } from '../../components/mascota/MascotaProvider';
 
 export default function IAScreen() {
   const [activeComponent, setActiveComponent] = useState(null); // null, 'cv', 'entrevista'
+  const { notifyIA } = useMascota();
+
+  useEffect(() => {
+    // Notificar a la mascota que entramos a la sección de IA
+    notifyIA();
+  }, [notifyIA]);
 
   const handleBack = () => {
     setActiveComponent(null);
@@ -127,6 +135,7 @@ export default function IAScreen() {
           </Text>
         </View>
       </ScrollView>
+
     </View>
   );
 }
@@ -306,5 +315,131 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#92400E',
     fontStyle: 'italic',
+  },
+
+  // Estilos del Modal Intermedio
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E6F7F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalEmoji: {
+    fontSize: 32,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalGreenCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    marginBottom: 12,
+  },
+  greenCardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#166534',
+    marginBottom: 8,
+  },
+  modalBlueCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    marginBottom: 24,
+  },
+  blueCardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#3730A3',
+    marginBottom: 8,
+  },
+  modalFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  modalCheck: {
+    color: '#16A34A',
+    marginRight: 8,
+    fontWeight: 'bold',
+  },
+  modalStar: {
+    color: '#4F46E5',
+    marginRight: 8,
+  },
+  modalFeatureText: {
+    fontSize: 13,
+    color: '#166534',
+  },
+  modalBlueFeatureText: {
+    fontSize: 13,
+    color: '#3730A3',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+    marginBottom: 16,
+  },
+  modalBtnApp: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  modalBtnAppText: {
+    color: '#4B5563',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalBtnWeb: {
+    flex: 1,
+    backgroundColor: '#5B34F2',
+    paddingVertical: 14,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  modalBtnWebText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalFooterText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });

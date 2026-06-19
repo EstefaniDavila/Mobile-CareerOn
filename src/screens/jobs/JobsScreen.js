@@ -9,12 +9,17 @@ import {
   TextInput,
   ActivityIndicator,
   SafeAreaView,
+  DeviceEventEmitter,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import studentService from "../../services/student";
 import JobSwiper from "./components/JobSwiper";
+import { useMascota } from "../../components/mascota/MascotaProvider";
 
 export default function JobSearchScreen() {
+  const { notifyBestMatch, notifyApplied, isOffline } = useMascota();
   const [showFilters, setShowFilters] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [allJobs, setAllJobs] = useState([]);
@@ -34,16 +39,46 @@ export default function JobSearchScreen() {
     company: "",
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      if (allJobs.length > 0) {
+        const bestJob = allJobs.reduce((prev, current) => 
+          (prev.match_score > current.match_score) ? prev : current
+        );
+        notifyBestMatch({ ...bestJob, match_score: bestJob.match_score > 0 ? bestJob.match_score : 100 });
+      }
+    }, [allJobs])
+  );
+
   const loadJobs = async () => {
     try {
       setLoading(true);
+      
+      if (isOffline) {
+        console.log("📡 Modo offline: Cargando empleos desde caché local...");
+        const cachedJobsStr = await AsyncStorage.getItem('@cached_jobs');
+        if (cachedJobsStr) {
+          const cachedJobs = JSON.parse(cachedJobsStr);
+          setAllJobs(cachedJobs);
+          extractFilterOptions(cachedJobs);
+          applyFilters(cachedJobs, filters);
+        } else {
+          setAllJobs([]);
+          setJobs([]);
+        }
+        setLoading(false);
+        return;
+      }
+
       console.log("📡 Cargando ofertas desde la API...");
       const result = await studentService.getJobs();
 
-      if (result.success && result.data && result.data.length > 0) {
-        console.log("✅ Ofertas reales cargadas:", result.data.length);
+      const jobsData = result.data.jobs || result.data; // Por si acaso es array u objeto
+
+      if (result.success && jobsData && jobsData.length > 0) {
+        console.log("✅ Ofertas reales cargadas:", jobsData.length);
         
-        const formattedJobs = result.data.map((job) => ({
+        const formattedJobs = jobsData.map((job) => ({
           id: job.id,
           title: job.title,
           company: job.company,
@@ -55,7 +90,12 @@ export default function JobSearchScreen() {
           benefits: job.benefits || [],
           companyLogo: job.company_logo || `https://logo.clearbit.com/${job.company?.toLowerCase().replace(/\s/g, "")}.com`,
           skills: job.skills || job.requirements?.slice(0, 3) || [],
+          match_score: job.match_score || 0,
+          is_match: job.is_match || false,
         }));
+        
+        // GUARDAR EN CACHÉ
+        await AsyncStorage.setItem('@cached_jobs', JSON.stringify(formattedJobs));
         
         setAllJobs(formattedJobs);
         extractFilterOptions(formattedJobs);
@@ -66,14 +106,23 @@ export default function JobSearchScreen() {
         setJobs([]);
       }
     } catch (error) {
-      console.error("❌ Error cargando ofertas:", error);
-      setAllJobs([]);
-      setJobs([]);
+      console.error("❌ Error cargando ofertas, intentando caché:", error);
+      try {
+        const cachedJobsStr = await AsyncStorage.getItem('@cached_jobs');
+        if (cachedJobsStr) {
+          const cachedJobs = JSON.parse(cachedJobsStr);
+          setAllJobs(cachedJobs);
+          extractFilterOptions(cachedJobs);
+          applyFilters(cachedJobs, filters);
+        }
+      } catch (e) {
+        setAllJobs([]);
+        setJobs([]);
+      }
     } finally {
       setLoading(false);
     }
   };
-
   const extractFilterOptions = (jobsList) => {
     const roles = new Set();
     const locations = new Set();
@@ -178,6 +227,20 @@ export default function JobSearchScreen() {
 
   useEffect(() => {
     loadJobs();
+
+    // Escuchar cuando el usuario hace clic en "Ir a ver" en el globo de la mascota
+    const listener = DeviceEventEmitter.addListener('openBestMatchJob', (job) => {
+      setShowFilters(false);
+      setJobs(prevJobs => {
+        // Asegurar que el trabajo sugerido aparezca primero
+        const otherJobs = prevJobs.filter(j => j.id !== job.id);
+        return [job, ...otherJobs];
+      });
+    });
+
+    return () => {
+      listener.remove();
+    };
   }, []);
 
   if (loading) {
@@ -324,36 +387,12 @@ export default function JobSearchScreen() {
             </View>
           </View>
 
-          <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Rango Salarial</Text>
-            <View style={styles.salaryButtons}>
-              {["< $1500", "$1500-$2500", "$2500-$4000", "> $4000"].map(
-                (sal) => (
-                  <TouchableOpacity
-                    key={sal}
-                    style={[
-                      styles.salaryButton,
-                      filters.salary === sal && styles.salaryButtonActive,
-                    ]}
-                    onPress={() => handleFilterChange("salary", filters.salary === sal ? "" : sal)}
-                  >
-                    <Text
-                      style={[
-                        styles.salaryText,
-                        filters.salary === sal && styles.salaryTextActive,
-                      ]}
-                    >
-                      {sal}
-                    </Text>
-                  </TouchableOpacity>
-                ),
-              )}
-            </View>
-          </View>
-
-          <View style={styles.filterStats}>
-            <Text style={styles.filterStatsText}>
-              {jobs.length} ofertas encontradas
+          <View style={[styles.filterStats, { backgroundColor: "#EEF2FF", borderColor: "#C7D2FE", borderWidth: 1 }]}>
+            <Text style={[styles.filterStatsText, { color: "#4F46E5", fontSize: 15 }]}>
+              ✨ ¡Mira tus recomendaciones para hoy!
+            </Text>
+            <Text style={{ color: "#6366F1", fontSize: 13, marginTop: 4, textAlign: "center" }}>
+              Tenemos {jobs.length} ofertas que quedan perfecto contigo
             </Text>
           </View>
 

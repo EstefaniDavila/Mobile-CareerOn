@@ -1,8 +1,12 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Image, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import studentService from '../../services/student';
+import { useMascota } from '../../components/mascota/MascotaProvider';
 
 export default function ApplicationsScreen() {
+  const { notifyApplications, isOffline } = useMascota();
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -123,6 +127,20 @@ export default function ApplicationsScreen() {
       
       setLoading(true);
       
+      if (isOffline) {
+        console.log("📡 Modo offline: Cargando aplicaciones desde caché local...");
+        try {
+          const cachedAppsStr = await AsyncStorage.getItem('@cached_applications');
+          if (cachedAppsStr) {
+            setApplications(JSON.parse(cachedAppsStr));
+          }
+        } catch (e) {
+          console.log("Error leyendo caché:", e);
+        }
+        setLoading(false);
+        return;
+      }
+      
       await Promise.all([
         loadApplicationsByStatus('Pendiente'),
         loadApplicationsByStatus('En_revision'),
@@ -144,7 +162,35 @@ export default function ApplicationsScreen() {
     };
     
     loadAllApplications();
-  }, []);
+  }, [isOffline]);
+
+  // Guardar en caché cuando las aplicaciones se actualizan
+  useEffect(() => {
+    if (!loading && !isOffline && Object.values(applications).some(arr => arr.length > 0)) {
+      AsyncStorage.setItem('@cached_applications', JSON.stringify(applications)).catch(e => console.log(e));
+    }
+  }, [applications, loading, isOffline]);
+
+  // Notificar a la mascota cuando se enfoca la pantalla y ya cargó
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) {
+        notifyApplications({
+          won: applications.Ganador?.length || 0,
+          review: (applications.En_revision?.length || 0) + (applications.Entrevista?.length || 0),
+          lost: applications.Rechazado?.length || 0,
+          pending: applications.Pendiente?.length || 0
+        });
+      }
+    }, [
+      loading, 
+      applications.Ganador, 
+      applications.En_revision, 
+      applications.Entrevista, 
+      applications.Rechazado, 
+      applications.Pendiente
+    ])
+  );
 
   // Generar feedback con IA
   const generateAIFeedback = (tags, jobTitle, companyName) => {
